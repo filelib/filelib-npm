@@ -1,0 +1,29 @@
+{
+  "name": "@filelib/uppy",
+  "version": "0.0.1",
+  "description": "Filelib.com Uppy uploader plugin",
+  "main": "./dist/FilelibUppy.js",
+  "types": "./dist/FilelibUppy.d.ts",
+  "files": [
+    "./dist/*",
+    "src/**/*.d.ts",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rm -rf ./dist &&  tsc -p ./tsconfig.json  --skipLibCheck && copyfiles -u 1 \"src/**/*.d.ts\" dist",
+    "lint": "eslint .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Filelib",
+  "license": "MIT",
+  "dependencies": {
+    "@filelib/client": "file:../client/filelib-client-0.0.1.tgz",
+    "@uppy/core": "^4.2.0",
+    "@uppy/utils": "^6.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.2",
+    "copyfiles": "^2.4.1",
+    "typescript": "^5.5.4"
+  }
+}

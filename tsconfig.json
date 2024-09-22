@@ -1,0 +1,53 @@
+{
+  "compilerOptions": {
+    // Enable latest features
+    "target": "es2015",
+    "module": "es2015",
+
+    "moduleDetection": "force",
+    "allowJs": true,
+    "declaration": true,
+    "esModuleInterop": true,
+
+    // Bundler mode
+//    "moduleResolution": "bundler",
+    "moduleResolution": "node",
+//    "allowImportingTsExtensions": true,
+//    "verbatimModuleSyntax": true,
+    "noEmit": false,
+    "noEmitOnError": false,
+//    "customConditions": ["source"],
+
+    // Best practices
+    "strict": false,
+    "skipLibCheck": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "types": [
+      "node"
+    ],
+    "baseUrl": ".",
+    "rootDir": "./src",
+    "sourceRoot": "./src/",
+    "sourceMap": true,
+    "outDir": "./dist/",
+//    "paths": {
+//      "@/*": [
+//        "packages/*/src/**/*"
+//      ]
+//    },
+    "typeRoots": [
+      "node_modules/@types",
+      "node_modules/@types/node"
+    ]
+  },
+  "references": [
+    {
+      "path": "packages/client/src"
+    },
+    {
+      "path": "packages/uppy/src"
+    }
+  ],
+  "exclude": ["node_modules", "dist", "*.d.ts"]
+}

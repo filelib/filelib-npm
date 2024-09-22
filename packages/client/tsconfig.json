@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    // Enable latest features
+    "types": [
+      "node"
+    ],
+    "baseUrl": ".",
+    "rootDir": "./src",
+    "sourceRoot": "./src/",
+    "sourceMap": true,
+    "outDir": "./dist/",
+    "typeRoots": [
+      "node_modules/@types",
+      "node_modules/@types/node"
+    ]
+  },
+  "include": ["./src/**/*", "./src/browser", "./src/node"],
+  "exclude": [
+    "./node_modules",
+    "./node_modules/*",
+    "./dist/",
+    "./dist/*",
+    "./eslint.config.mjs",
+  ]
+}
