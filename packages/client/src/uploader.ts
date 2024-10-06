@@ -16,9 +16,10 @@ import Config from "./config"
 import { FilelibAPIResponseError } from "./exceptions"
 import { getFile } from "./utils"
 import request from "./request"
-import { Storage } from "@justinmusti/storage"
+import Storage from "@justinmusti/storage/node"
 
 export default class Uploader {
+    id: UploaderOpts["id"]
     auth: Auth
     file: UploaderOpts["file"]
     config: Config
@@ -46,7 +47,8 @@ export default class Uploader {
     // TODO: Implement this later
     _CACHE_ENTITY_KEY = "LOCATION"
 
-    constructor({ file, config, auth, metadata, workers = 3, onProgress, onSuccess, storage }: UploaderOpts) {
+    constructor({ id, file, config, auth, metadata, workers = 3, onProgress, onSuccess, storage }: UploaderOpts) {
+        this.id = id
         this.file = file
         this.auth = auth
         this.config = config
@@ -56,6 +58,7 @@ export default class Uploader {
         this.onSuccess = onSuccess
         this.bytesUploaded = 0
         this.storage = storage
+        console.log("Uploader INITED WITH ID", id)
         console.log("Uploader INITED WITH AUTH", auth)
         console.log("Uploader INITED WITH file", file)
         console.log("Uploader INITED WITH config", config)
@@ -161,7 +164,7 @@ export default class Uploader {
         const chunk = await source.slice(0, offset_end)
 
         const payload = await chunk.value.text()
-        console.log("CREATING HAS FROM PAYLOAD", payload)
+        // console.log("CREATING HAS FROM PAYLOAD", payload)
         const hash = genHash(payload)
         console.log("CREATED HASH", hash)
         return hash
@@ -172,8 +175,7 @@ export default class Uploader {
         console.log("UPLOADING CHUNK", partNumber, url, log_url, method)
         const authHeaders = await this.auth.to_headers()
         const chunk = await this.getChunk(partNumber)
-        console.log("CHUNK", chunk)
-        console.log("CHUNK DATA", await chunk.value.text())
+        // console.log("CHUNK DATA", await chunk.value.text())
         // console.log("GRPOUP ARRAY", groupArray(Array.from(Array(1).keys()), 3))
 
         const { raw_response: response, error } = await request(url, {
@@ -219,8 +221,8 @@ export default class Uploader {
         console.log("GROUPED ARRAY", groupedParts)
         for (const partGroup of groupedParts) {
             const settlements = await Promise.allSettled(
-                partGroup.map(async (p) => {
-                    await this.uploadPart(p)
+                partGroup.map((p) => {
+                    return this.uploadPart(p)
                 })
             )
             // Promise.allSettled(partGroup.map(async (p) => await this.uploadPart(p))).then(console.log)
@@ -230,17 +232,24 @@ export default class Uploader {
         await this.uploadPart(lastPartNumber)
         const file = await getFile({ auth: this.auth, fileURL: this.LOCATION })
         this?.onSuccess(file)
-        // getFile(this.)
         this.FILE_UPLOAD_STATUS = UPLOAD_COMPLETED
         return true
     }
 
     async upload() {
-        await this.initUpload()
-        await this.getHash()
-        const location = this.LOCATION
-        console.log("UPLOAD CHUNK LOCATION", location)
-        console.log("PART NUMBER MAP", this.UPLOAD_PART_NUMBER_MAP)
-        await this.process_chunks()
+        // return Promise.resolve(`UPLOADED ${this.metadata.name}`)
+        try {
+            await this.initUpload()
+            await this.getHash()
+            const location = this.LOCATION
+            console.log("UPLOAD CHUNK LOCATION", location)
+            console.log("PART NUMBER MAP", this.UPLOAD_PART_NUMBER_MAP)
+            await this.process_chunks()
+            console.warn(`Processed file ${this.metadata.name}`)
+            return Promise.resolve(`UPLOADED ${this.metadata.name}`)
+        } catch (e: unknown) {
+            console.error(e)
+            return Promise.reject(`Failed file ${this.metadata.name} with logged reason`)
+        }
     }
 }

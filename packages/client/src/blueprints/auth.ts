@@ -2,7 +2,7 @@ import { AuthOptions } from "../types"
 import { AUTHORIZATION_HEADER } from "../constants"
 
 export default abstract class Auth {
-    protected auth_key!: AuthOptions["auth_key"]
+    protected authKey!: AuthOptions["authKey"]
     protected access_token!: string
     protected expiration!: Date
 

@@ -1,9 +1,8 @@
 import { BasePlugin, Body, Meta, Uppy } from "@uppy/core"
+import Client, { Config } from "@filelib/client/browser"
 import { filterFilesToEmitUploadStarted, filterNonFailedFiles } from "@uppy/utils/lib/fileFilters"
-import Client from "@filelib/client/browser"
-import { Config } from "@filelib/client"
-
 import { DefinePluginOpts } from "@uppy/core/lib/BasePlugin"
+import { FilelibFile } from "@filelib/client"
 import { FilelibUppyOpts } from "./types"
 import { UppyFile } from "@uppy/utils/lib/UppyFile"
 
@@ -11,25 +10,31 @@ import { UppyFile } from "@uppy/utils/lib/UppyFile"
 const defaultOptions = {
     limit: 20,
     parallelUploads: 5
-} satisfies Partial<FilelibUppyOpts<Record<string, unknown>, Record<string, unknown>>>
+} satisfies Partial<FilelibUppyOpts>
 
 // type Opts<M extends Meta, B extends Body> = DefinePluginOpts<FilelibUppyOpts<M, B>, keyof typeof defaultOptions>
 
-type Opts<M extends Meta, B extends Body> = DefinePluginOpts<FilelibUppyOpts<M, B>, keyof typeof defaultOptions>
+type Opts = DefinePluginOpts<FilelibUppyOpts, keyof typeof defaultOptions>
 
-export default class FilelibUppy<M extends Meta, B extends Body> extends BasePlugin<Opts<M, B>, M, B> {
+export default class FilelibUppy<M extends Meta, B extends Body> extends BasePlugin<Opts, M, B> {
+    id: string = "Filelib"
     client: Client
 
-    constructor(uppy: Uppy<M, B>, opts: FilelibUppyOpts<M, B>) {
+    constructor(uppy: Uppy<M, B>, opts: FilelibUppyOpts) {
         super(uppy, { ...defaultOptions, ...opts })
         this.type = "uploader"
         this.id = this.opts.id || "Filelib"
-        // window.genHash = genHash
-        console.log("Filelib client", Client)
-        this.client = new Client({ auth_key: opts.auth_key })
+        this.client = new Client({ authKey: opts.authKey })
+        this.uppy.on("file-removed", (file) => {
+            console.log("REMOVING FILE", file)
+            this.client.removeFile({ id: file.id })
+        })
 
+        this.uppy.on("file-added", (file) => {
+            console.log("ADDED A FILE", file)
+            this.addFile(file)
+        })
         console.log("Filelib uploader initialized with opts", opts, this.opts)
-        console.log("Filelib UPPY plugin opts", this.opts)
     }
 
     /**
@@ -51,37 +56,46 @@ export default class FilelibUppy<M extends Meta, B extends Body> extends BasePlu
         })
     }
 
+    private addFile(file: UppyFile<M, B>) {
+        // TODO: take config as a parameter.
+        const config = new Config({ storage: "s3main" })
+
+        const onProgress = (bytesUploaded: number, bytesTotal: number) => {
+            console.log("Updating progress ", bytesUploaded, bytesTotal, file.progress)
+            this.uppy.emit("upload-progress", file, {
+                // uploadStarted: f.progress.uploadStarted ?? 0,
+                uploadStarted: 1,
+                bytesUploaded,
+                bytesTotal: file.size
+            })
+        }
+
+        const onSuccess = (filelibFile: FilelibFile & { uploadURL: string }) => {
+            const uploadResp = {
+                uploadURL: filelibFile.uploadURL,
+                status: 200,
+                body: {} as B
+            }
+            console.log("Ayoo", filelibFile)
+            this.uppy.emit("upload-success", file, uploadResp)
+
+            this.opts?.onSuccess(filelibFile)
+        }
+
+        this.client.addFile({
+            metadata: { name: file.name, size: file.size, type: file.type },
+            id: file.id,
+            file: file.data as File,
+            config,
+            onProgress,
+            onSuccess
+        })
+    }
+
     uploadFiles = async (files: UppyFile<M, B>[]): Promise<void> => {
         console.log("RECEIVED FILES FOR UPLOAD", files)
         console.log("CLIENT", Client)
 
-        files.forEach((f) => {
-            // TODO: take config as a parameter.
-            const config = new Config({ storage: "s3main" })
-
-            const onProgress = (bytesUploaded: number, bytesTotal: number) => {
-                console.log("Updating progress ", bytesUploaded, bytesTotal, f.progress)
-                this.uppy.emit("upload-progress", f, {
-                    // uploadStarted: f.progress.uploadStarted ?? 0,
-                    uploadStarted: 1,
-                    bytesUploaded,
-                    bytesTotal: f.size
-                })
-            }
-
-            const onSuccess = (file: UppyFile<M, B> & { uploadURL: string }) => {
-                const uploadResp = {
-                    uploadURL: file.uploadURL,
-                    status: 200,
-                    body: {} as B
-                }
-                console.log("Ayoo")
-                this.opts?.onSuccess(file)
-                this.uppy.emit("upload-success", f, uploadResp)
-            }
-
-            this.client.add_file({ file: f, config, onProgress, onSuccess })
-        })
         if (!this.client.files || this.client.files.length < 1) {
             this.uppy.emit("error", new Error("No Files to upload in Filelib Client."))
             return

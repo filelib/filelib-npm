@@ -3,18 +3,21 @@
  *
  * */
 import { AuthOptions, FilelibClientOpts, UploaderOpts } from "../types"
-import { FileConfigRequiredError, NoFileToUploadError } from "../exceptions"
 
 import Auth from "./auth"
 import BaseClient from "../blueprints/client"
 import Config from "../config"
+import { FileConfigRequiredError } from "../exceptions"
 import { default as FileReader } from "tus-js-client/lib/browser/fileReader"
-import { groupArray } from "@justinmusti/utils"
-import { Storage } from "@justinmusti/storage"
+import Storage from "@justinmusti/storage/browser"
 import Uploader from "../uploader"
 
 const defaultOpts: Partial<FilelibClientOpts> = {
-    parallelUploads: 5
+    parallelUploads: 5,
+    limit: 20,
+    ignoreCache: false,
+    abortOnFail: true,
+    clearCache: false
 }
 
 export default class Client extends BaseClient {
@@ -23,63 +26,56 @@ export default class Client extends BaseClient {
     files!: Uploader[]
     opts: Partial<FilelibClientOpts>
 
-    constructor({ source, auth, config, auth_key, source_file, ...opts }: FilelibClientOpts & { auth?: Auth }) {
-        super({ config })
-        this.auth = auth ?? new Auth({ source, auth_key, source_file } as AuthOptions)
+    constructor({ source, auth, config, authKey, source_file, ...opts }: FilelibClientOpts & { auth?: Auth }) {
+        super()
+        this.auth = auth ?? new Auth({ source, authKey, source_file } as AuthOptions)
         this.files = []
         this.config = config
         this.opts = { ...defaultOpts, ...opts }
         console.log("BROWSER CLIENT INIT WITH auth", this.auth)
     }
 
-    add_file({ file, config, onProgress, onSuccess }: UploaderOpts) {
+    addFile({
+        id,
+        file,
+        config,
+        onProgress,
+        onSuccess,
+        metadata,
+        ...rest
+    }: {
+        id: UploaderOpts["id"]
+        file: File
+        config?: Config
+        onProgress?: UploaderOpts["onProgress"]
+        onSuccess?: UploaderOpts["onSuccess"]
+        metadata?: UploaderOpts["metadata"]
+    }) {
+        console.log("ADDING FILE FOR BROWSER CLIENT", file)
         if (!config && !this.config) {
             throw new FileConfigRequiredError("Config must be provided for file.")
         }
+        console.log(
+            "ID",
+            id,
+            this.files.find((x) => x.id === id)
+        )
+        if (id && this.files.find((x) => x.id === id)) return
 
-        // this.files.push(file)
-        const _file = new FileReader().openFile(file.data, file.size)
-        const metadata = {
-            name: file.name,
-            size: file.size,
-            type: file.type
-        }
-
+        const _file = new FileReader().openFile(file, metadata.size)
+        console.log("PUSHING TO LIST")
         this.files.push(
             new Uploader({
+                id,
                 file: _file,
                 config: config ?? this.config!,
                 auth: this.auth,
                 metadata,
                 onProgress,
                 onSuccess,
-                storage: new Storage("filelib")
+                storage: new Storage(),
+                ...rest
             })
         )
-    }
-
-    /**
-     * Check if at the time this is called, we can make perform uploads.
-     */
-    canUpload(): boolean {
-        if (!this.files || this.files.length < 1) {
-            return false
-        }
-        return true
-    }
-
-    upload() {
-        if (this.files.length === 0) throw new NoFileToUploadError("No Files to upload")
-        // this.files.forEach((uploader) => uploader.upload())
-
-        const groupedUploads = groupArray<Uploader>(this.files, this.opts.parallelUploads)
-        console.log("GROUPED UPLOADS", groupedUploads)
-        for (const uploads of groupedUploads) {
-            Promise.allSettled(
-                uploads.map(async (u) => {
-                    await u.upload()
-                })
-            ).then((results) => console.log("PROMISE POOL SETTLEMENT", results))
-        }
     }
 }

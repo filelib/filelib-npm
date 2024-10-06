@@ -5,6 +5,13 @@
     "types": [
       "node"
     ],
+    "moduleResolution": "bundler",
+    "lib": [
+      "es2015",
+      "es2018",
+      "es2020",
+      "dom"
+    ],
     "baseUrl": ".",
     "rootDir": "./src",
     "sourceRoot": "./src/",
@@ -12,7 +19,8 @@
     "outDir": "./dist/",
     "typeRoots": [
       "node_modules/@types",
-      "node_modules/@types/node"
+      "node_modules/@types/node",
+      "./src/types.d.ts"
     ]
   },
   "include": ["./src/**/*", "./src/browser", "./src/node"],

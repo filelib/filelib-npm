@@ -13,7 +13,7 @@
     "@chakra-ui/react": "^2.8.2",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
-    "@filelib/client": "file:../packages/client/filelib-client-0.0.1.tgz",
+    "@filelib/client": "file:../packages/client/packs/filelib-client-0.0.1.tgz",
     "@filelib/uppy": "file:../packages/uppy/filelib-uppy-0.0.1.tgz",
     "@uppy/core": "^4.2.0",
     "@uppy/dashboard": "^4.1.0",

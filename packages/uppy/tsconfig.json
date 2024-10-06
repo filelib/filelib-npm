@@ -17,7 +17,8 @@
     "moduleResolution": "bundler",
     "typeRoots": [
       "node_modules/@types",
-      "node_modules/@types/node"
+      "node_modules/@types/node",
+      "./src/types.d.ts"
     ]
   },
   "include": ["./src/**/*"],

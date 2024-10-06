@@ -3,12 +3,15 @@
  *
  * */
 import * as path from "path"
-import { FileConfigRequiredError, FileDoesNotExistError, NoFileToUploadError } from "../exceptions"
-import { readFileSync, statSync } from "node:fs"
+import { FileConfigRequiredError, FileDoesNotExistError } from "../exceptions"
 import Auth from "./auth"
 import Config from "../config"
 import { existsSync } from "fs"
 import { FilelibClientOpts } from "../types"
+import { default as FileReader } from "tus-js-client/lib/node/fileReader"
+import { randomUUID } from "crypto"
+import { statSync } from "node:fs"
+import Storage from "@justinmusti/storage/node"
 import Uploader from "../uploader"
 
 interface AddFileOpts {
@@ -20,8 +23,8 @@ export default class Client {
     config?: Config
     files!: Uploader[]
 
-    constructor({ source, auth, config, auth_key, auth_secret, source_file }: FilelibClientOpts & { auth?: Auth }) {
-        this.auth = auth ?? new Auth({ source, auth_key, auth_secret, source_file })
+    constructor({ source, auth, config, authKey, auth_secret, source_file }: FilelibClientOpts & { auth?: Auth }) {
+        this.auth = auth ?? new Auth({ source, authKey, auth_secret, source_file })
         this.files = []
         this.config = config
     }
@@ -39,16 +42,24 @@ export default class Client {
             console.log("ADDING FILE INFO", statSync(file))
             console.log("ADDING FILE PATH BASENAME ", path.basename(file))
             console.log("ADDING FILE PATH EXTNAME ", path.extname(file))
-            const fileObject = readFileSync(file)
-            fileObject.name = path.basename(file)
-            fileObject.size = statSync(file).size
-            fileObject.type = statSync(file).type
-            this.files.push(new Uploader({ file: fileObject, config: config ?? this.config!, auth: this.auth }))
-        }
-    }
 
-    upload() {
-        if (this.files.length === 0) throw new NoFileToUploadError("No Files to upload")
-        this.files.forEach((uploader) => void uploader.upload())
+            const metadata = {
+                name: path.basename(file),
+                size: statSync(file).size,
+                type: ""
+            }
+
+            const _file = new FileReader().openFile(file, metadata.size)
+            this.files.push(
+                new Uploader({
+                    file: _file,
+                    config: config ?? this.config!,
+                    id: randomUUID(),
+                    auth: this.auth,
+                    metadata,
+                    storage: new Storage({ path: ".", prefix: "" })
+                })
+            )
+        }
     }
 }

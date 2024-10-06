@@ -10,16 +10,16 @@ import { v4 as randomUUID } from "uuid"
 export default class Auth extends BaseAuth {
     /**
      * Initialize an Auth instance that will handle authentication with Filelib API.
-     * @param auth_key {string} - Pass credential key directly.
+     * @param authKey {string} - Pass credential key directly.
      */
-    constructor({ auth_key }: Partial<AuthOptions>) {
+    constructor({ authKey }: Partial<AuthOptions>) {
         super()
-        this.auth_key = auth_key
+        this.authKey = authKey
 
-        if (!auth_key) {
-            throw new AuthMissingCredentialError("Auth Key(auth_key) must be provided.")
+        if (!authKey) {
+            throw new AuthMissingCredentialError("Auth Key(authKey) must be provided.")
         }
-        this.auth_key = auth_key
+        this.authKey = authKey
     }
 
     /**
@@ -38,7 +38,7 @@ export default class Auth extends BaseAuth {
             return Promise.reject("No Body element.")
         }
 
-        const target = `${FILELIB_API_AUTH_BROWSER_URL}${this.auth_key}/`
+        const target = `${FILELIB_API_AUTH_BROWSER_URL}${this.authKey}/`
         const iframeName = "filelib-auth-iframe"
         let IframeEl = document.createElement("iframe")
         IframeEl.setAttribute("src", target)
@@ -63,7 +63,7 @@ export default class Auth extends BaseAuth {
         const authInput = document.createElement("input")
         authInput.setAttribute("type", "text")
         authInput.setAttribute("name", "auth_key")
-        authInput.setAttribute("value", this.auth_key!)
+        authInput.setAttribute("value", this.authKey!)
 
         const nonceInput = document.createElement("input")
         nonceInput.setAttribute("type", "hidden")
@@ -100,7 +100,7 @@ export default class Auth extends BaseAuth {
     public async acquire_access_token(): Promise<string> {
         const nonce = await this.createIFrame()
         const headers = {
-            Authorization: `Basic ${this.auth_key}`,
+            Authorization: `Basic ${this.authKey}`,
             "Content-Type": "application/json"
         }
 

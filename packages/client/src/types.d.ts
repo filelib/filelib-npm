@@ -6,22 +6,40 @@ import { Storage } from "@justinmusti/storage"
 
 export interface AuthOptions {
     source: (typeof CREDENTIAL_SOURCE_OPTIONS)[number]
-    auth_key?: string
+    authKey?: string
     auth_secret?: string
     source_file?: string
 }
 
 export interface FilelibClientOpts extends Partial<AuthOptions> {
+    // ignoreCache, abortOnFail, clearCache, chunkSize
+
     auth?: Auth
     source?: AuthOptions["source"]
     config?: Config
     parallelUploads?: number
+
+    // export interface FilelibUppyOpts extends PluginOpts {
+    authKey?: string // Filelib credentials Auth/API key
+    metadata?: MetaData
+
+    limit?: number
+    ignoreCache?: boolean
+    abortOnFail?: boolean
+    clearCache?: boolean
+
+    onProgress?: ((bytesSent: number, bytesTotal: number) => void) | null
+    onChunkComplete?: ((chunkSize: number, bytesAccepted: number, bytesTotal: number) => void) | null
+    onSuccess?: ((file: FilelibFile) => void) | null
+    onError?: ((error: Error) => void) | null
+    onShouldRetry?: ((error: Error, retryAttempt: number) => boolean) | null
+    headers?: { [key: string]: string }
 }
 
 interface ConfigOpts {
     storage: string
-    prefix: string
-    access: string
+    prefix?: string
+    access?: string
 }
 
 export type FileLike = string | File
@@ -57,7 +75,7 @@ export interface FilelibFile {
 }
 
 export interface UploaderOpts {
-    // file: string | (File | MetaData)
+    id: string
     file: Promise<FileSource>
     config: Config
     auth: Auth
