@@ -25,6 +25,7 @@
     "typeRoots": [
       "node_modules/@types",
       "node_modules/@types/node",
+      "node_modules/@types/bun",
       "./src/types.d.ts"
     ]
   },
