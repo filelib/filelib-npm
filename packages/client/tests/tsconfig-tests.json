@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "esModuleInterop": true,
+    // Enable latest features
+    "types": [
+      "node",
+      "bun"
+    ],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "es2015",
+      "es2018",
+      "es2020",
+      "dom",
+      "esnext"
+    ],
+//    "baseUrl": ".",
+    "rootDir": "./",
+    "outDir": "../dist/tests",
+    "emitDeclarationOnly": true,
+    "typeRoots": [
+      "node_modules/@types",
+      "node_modules/@types/node"
+    ]
+  },
+  "include": [
+    "../src/**/*",
+    "../src/*",
+    "./*",
+    "./**/*"
+  ],
+  "exclude": [
+    "../node_modules",
+    "../node_modules/*",
+    "../dist/",
+    "../dist/*",
+    "../eslint.config.mjs"
+  ]
+}

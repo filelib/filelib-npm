@@ -3,36 +3,32 @@
  *
  * */
 import * as path from "path"
-import { FileConfigRequiredError, FileDoesNotExistError } from "../exceptions"
+import { FilelibClientOpts, UploaderOpts } from "../types"
 import Auth from "./auth"
+import BaseClient from "../blueprints/client"
 import Config from "../config"
 import { existsSync } from "fs"
-import { FilelibClientOpts } from "../types"
+import { FileDoesNotExistError } from "../exceptions"
 import { default as FileReader } from "tus-js-client/lib/node/fileReader"
-import { randomUUID } from "crypto"
 import { statSync } from "node:fs"
 import Storage from "@justinmusti/storage/node"
 import Uploader from "../uploader"
 
-interface AddFileOpts {
-    file: string | File
-    config?: Config
-}
-export default class Client {
+export default class Client extends BaseClient {
     auth: Auth
     config?: Config
     files!: Uploader[]
 
     constructor({ source, auth, config, authKey, auth_secret, source_file }: FilelibClientOpts & { auth?: Auth }) {
+        super()
         this.auth = auth ?? new Auth({ source, authKey, auth_secret, source_file })
         this.files = []
         this.config = config
     }
 
-    add_file({ file, config }: AddFileOpts) {
-        if (!config && !this.config) {
-            throw new FileConfigRequiredError("Config must be provided for file.")
-        }
+    addFile({ id, file, config }: UploaderOpts) {
+        this.validateAddFile({ id, config })
+
         // Get file from the path
         if (typeof file == "string") {
             if (!existsSync(file)) {
@@ -52,12 +48,12 @@ export default class Client {
             const _file = new FileReader().openFile(file, metadata.size)
             this.files.push(
                 new Uploader({
+                    id,
                     file: _file,
                     config: config ?? this.config!,
-                    id: randomUUID(),
                     auth: this.auth,
                     metadata,
-                    storage: new Storage({ path: ".", prefix: "" })
+                    storage: new Storage({ path: ".", prefix: "filelib" })
                 })
             )
         }

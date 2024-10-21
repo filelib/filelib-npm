@@ -18,7 +18,6 @@
   "author": "Filelib",
   "license": "MIT",
   "peerDependencies": {
-    "@filelib/client": "file:../client/packs/filelib-client-0.0.1.tgz",
     "@uppy/core": "^4.0.0",
     "@uppy/utils": "^6.0.0"
   },
@@ -26,5 +25,8 @@
     "@types/node": "^22.5.2",
     "copyfiles": "^2.4.1",
     "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@filelib/client": "file:/home/musti/repos/filelib-npm/packages/client/packs/filelib-client-0.0.1.tgz"
   }
 }

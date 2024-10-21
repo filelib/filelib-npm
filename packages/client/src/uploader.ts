@@ -1,6 +1,6 @@
-import { genHash, groupArray } from "@justinmusti/utils"
-import { KeyMap, MetaData, UploaderOpts, UploadUrlMap } from "./types"
 import {
+    FILE_UPLOAD_STATUS_HEADER,
+    FILELIB_API_UPLOAD_URL,
     MAX_CHUNK_SIZE,
     MIN_CHUNK_SIZE,
     UPLOAD_CHUNK_SIZE_HEADER,
@@ -10,13 +10,24 @@ import {
     UPLOAD_PENDING,
     UPLOAD_STARTED
 } from "./constants"
-
+import { genHash, groupArray, strToASCII } from "@justinmusti/utils"
+import { KeyMap, MetaData, UploaderOpts, UploadUrlMap } from "./types"
 import Auth from "./blueprints/auth"
+
 import Config from "./config"
 import { FilelibAPIResponseError } from "./exceptions"
 import { getFile } from "./utils"
 import request from "./request"
-import Storage from "@justinmusti/storage/node"
+
+const defaultOptions: Partial<UploaderOpts> = {
+    workers: 3,
+    onProgress: () => void 0,
+    onSuccess: () => void 0,
+    onError: () => void 0,
+    useCache: true,
+    clearCacheOnSuccess: false,
+    clearCacheOnError: false
+}
 
 export default class Uploader {
     id: UploaderOpts["id"]
@@ -24,14 +35,12 @@ export default class Uploader {
     file: UploaderOpts["file"]
     config: Config
     metadata: MetaData
-    workers: number
-    onProgress?: UploaderOpts["onProgress"]
-    onSuccess?: UploaderOpts["onSuccess"]
     bytesUploaded: number
-    storage: Storage
+    storage: UploaderOpts["storage"]
+    opts: Partial<UploaderOpts>
 
     // This is the placeholder for a given file after it gets initialized in Filelib API.
-    LOCATION!: string
+    LOCATION: string
 
     // This value can be changed if server responds with previous uploads.
     UPLOAD_CHUNK_SIZE: number = MAX_CHUNK_SIZE
@@ -43,21 +52,17 @@ export default class Uploader {
 
     FILE_UPLOAD_STATUS = UPLOAD_PENDING
 
-    // Key name for storing unique file URL
-    // TODO: Implement this later
-    _CACHE_ENTITY_KEY = "LOCATION"
-
-    constructor({ id, file, config, auth, metadata, workers = 3, onProgress, onSuccess, storage }: UploaderOpts) {
+    constructor({ id, file, config, auth, metadata, storage, ...rest }: UploaderOpts) {
         this.id = id
         this.file = file
         this.auth = auth
         this.config = config
         this.metadata = metadata
-        this.workers = workers
-        this.onProgress = onProgress
-        this.onSuccess = onSuccess
+
         this.bytesUploaded = 0
         this.storage = storage
+        this.opts = { ...defaultOptions, ...rest }
+
         console.log("Uploader INITED WITH ID", id)
         console.log("Uploader INITED WITH AUTH", auth)
         console.log("Uploader INITED WITH file", file)
@@ -100,10 +105,102 @@ export default class Uploader {
     }
 
     /**
+     * Generate and return a unique key for a given file.
+     * @private
+     */
+    private getCacheKey(): string {
+        return `filelib/${this.genFileID()}`
+    }
+
+    private hasCache() {
+        console.log("CHECKING CACHE", this.getCacheKey())
+        return this.opts.useCache && this.storage.has(this.getCacheKey())
+    }
+
+    /**
+     * Utilize caching mechanism if useCache set to true.
+     *
+     * Store upload status to a given storage engine(@justinmusti/storage).
+     *
+     * @param overrides
+     * @private
+     */
+    private async setCache(overrides?: KeyMap | null | undefined): Promise<void> {
+        // Terminate is useCache set to false.
+        if (!this.opts?.useCache) {
+            return Promise.resolve(void 0)
+        }
+        const hash = await this.getHash()
+        const payload = JSON.stringify({
+            hash,
+            metaData: this.metadata,
+            uploadURL: this.LOCATION,
+            creationTime: new Date().toISOString(),
+            ...(overrides ?? {})
+        })
+        console.log("SETTING CACHE", this.getCacheKey(), payload)
+        this.storage.set(this.getCacheKey(), payload)
+    }
+
+    private async initUploadFromCache() {
+        console.log("INITING FROM CACHE")
+        const cachedpaylaod = this.storage.get(this.getCacheKey(), {})
+        if (!cachedpaylaod?.uploadURL) {
+            this.storage.unset(this.getCacheKey())
+            return this.initUpload()
+        }
+        console.log("CACHE PAYLOAD", cachedpaylaod)
+        console.log("CAHCED UPLOAD URL", cachedpaylaod.uploadURL)
+        await this.headFile(cachedpaylaod?.uploadURL)
+    }
+
+    /**
+     * Fetch file status from FileLib API
+     */
+    async headFile(fileURL: string) {
+        const { headers, response } = await request(fileURL, {
+            method: "HEAD",
+            headers: await this.auth.to_headers()
+        })
+        console.log("HEAD FILE RESPONSE headers", headers)
+        headers.forEach((value, key) => console.log("HEADER", key, value))
+        // Check if completed.
+
+        console.log("HEADERS HAS STATUS", headers.has(FILE_UPLOAD_STATUS_HEADER))
+        console.log("HEADERS STATUS VALUE", headers.get(FILE_UPLOAD_STATUS_HEADER))
+        if (headers.has(FILE_UPLOAD_STATUS_HEADER)) {
+            if (headers.get(FILE_UPLOAD_STATUS_HEADER).toLowerCase() === UPLOAD_COMPLETED) {
+                // Call the onProgress and mark it completed.
+                this.opts.onProgress(this.metadata.size, this.metadata.size)
+                const file = await getFile({ auth: this.auth, fileURL })
+                this.opts.onSuccess(file)
+                console.log("THIS UPLOAD COMPLETED")
+            }
+        }
+        this.parseHeaders(headers)
+        console.log("HEAD FILE RESPONSE response", response)
+    }
+
+    /**
+     *
+     * @private
+     */
+    private prepClassForUpload({ uploadURL, uploadStatus, uploadPartNumberMap }) {
+        this.LOCATION = uploadURL
+        this.FILE_UPLOAD_STATUS = uploadStatus
+        this.UPLOAD_PART_NUMBER_MAP = uploadPartNumberMap
+    }
+
+    /**
      * Initialize file upload process.
      * Acquire a unique URL for the file to be uploaded to.
      */
     async initUpload() {
+        // Check if file exists in storage.
+        if (this.hasCache()) {
+            return this.initUploadFromCache()
+        }
+
         const headers = await this.getInitUploadHeaders()
         const payload = this.gen_init_payload()
 
@@ -116,7 +213,7 @@ export default class Uploader {
             response: { data },
             error,
             headers: resHeaders
-        } = await request<dataType>("http://api.filelib.net:8000/upload/", {
+        } = await request<dataType>(FILELIB_API_UPLOAD_URL, {
             method: "POST",
             headers,
             body: JSON.stringify(payload)
@@ -130,20 +227,6 @@ export default class Uploader {
         this.LOCATION = data.location
         await this.setCache()
         return data
-    }
-
-    private async setCache(overrides?: KeyMap | null | undefined): Promise<void> {
-        const hash = await this.getHash()
-        const payload = JSON.stringify({
-            hash,
-            metaData: this.metadata,
-            uploadURL: this.LOCATION,
-            creationTime: new Date().toISOString(),
-            ...(overrides ?? {})
-        })
-        const cacheName = `filelib/${this.metadata.name}`
-        console.log(hash)
-        this.storage.set(cacheName, payload)
     }
 
     async getChunk(partNumber: number) {
@@ -175,8 +258,6 @@ export default class Uploader {
         console.log("UPLOADING CHUNK", partNumber, url, log_url, method)
         const authHeaders = await this.auth.to_headers()
         const chunk = await this.getChunk(partNumber)
-        // console.log("CHUNK DATA", await chunk.value.text())
-        // console.log("GRPOUP ARRAY", groupArray(Array.from(Array(1).keys()), 3))
 
         const { raw_response: response, error } = await request(url, {
             method,
@@ -195,7 +276,7 @@ export default class Uploader {
         console.log("COMPLETED CHUNK", partNumber, this.LOCATION)
         const chunkSize = chunk.value.size
         this.bytesUploaded += chunkSize
-        this?.onProgress(this.bytesUploaded, this.metadata.size)
+        this.opts.onProgress(this.bytesUploaded, this.metadata.size)
         return Promise.resolve(true)
     }
 
@@ -217,7 +298,7 @@ export default class Uploader {
             part_numbers.splice(index, 1)
         }
         console.log("PART NUMBERS", part_numbers)
-        const groupedParts = groupArray<number>(part_numbers, this.workers)
+        const groupedParts = groupArray<number>(part_numbers, this.opts.workers)
         console.log("GROUPED ARRAY", groupedParts)
         for (const partGroup of groupedParts) {
             const settlements = await Promise.allSettled(
@@ -231,7 +312,7 @@ export default class Uploader {
         console.log("UPLOADING LAST PART", lastPartNumber)
         await this.uploadPart(lastPartNumber)
         const file = await getFile({ auth: this.auth, fileURL: this.LOCATION })
-        this?.onSuccess(file)
+        this.opts.onSuccess(file)
         this.FILE_UPLOAD_STATUS = UPLOAD_COMPLETED
         return true
     }
@@ -240,7 +321,6 @@ export default class Uploader {
         // return Promise.resolve(`UPLOADED ${this.metadata.name}`)
         try {
             await this.initUpload()
-            await this.getHash()
             const location = this.LOCATION
             console.log("UPLOAD CHUNK LOCATION", location)
             console.log("PART NUMBER MAP", this.UPLOAD_PART_NUMBER_MAP)
@@ -248,8 +328,23 @@ export default class Uploader {
             console.warn(`Processed file ${this.metadata.name}`)
             return Promise.resolve(`UPLOADED ${this.metadata.name}`)
         } catch (e: unknown) {
-            console.error(e)
+            console.error("UPLOADER UPLOAD ERROR:", e)
+            this.opts.onError(this.metadata, e as Error)
             return Promise.reject(`Failed file ${this.metadata.name} with logged reason`)
         }
+    }
+
+    genFileID(): string {
+        let output = ""
+        if (this.metadata.name) {
+            output += strToASCII(this.metadata.name)
+        }
+        if (this.metadata.size) {
+            output += `-${this.metadata.size}`
+        }
+        if (this.metadata.type) {
+            output += `-${strToASCII(this.metadata.type)}`
+        }
+        return output.replace(/\//g, "-")
     }
 }

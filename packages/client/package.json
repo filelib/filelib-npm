@@ -17,7 +17,7 @@
     "./types": "./dist/types.d.ts"
   },
   "scripts": {
-    "build": "rm -rf ./dist && copyfiles -u 1 \"src/**/*.d.ts\" dist &&  tsc -p ./tsconfig.json  --skipLibCheck ",
+    "build": "rm -rf ./dist && copyfiles -u 1 \"src/**/*.d.ts\" dist &&  tsc -p ./tsconfig-build.json  --skipLibCheck ",
     "pack": "npm run build || true && rm -rf ./packs/* && npm pack --pack-destination=./packs",
     "lint": "eslint .",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -29,8 +29,8 @@
     "uuid": "^10.0.0"
   },
   "peerDependencies": {
-    "@justinmusti/storage": "^0.0.5",
-    "@justinmusti/utils": "^0.0.7",
+    "@justinmusti/storage": "^0.0.9",
+    "@justinmusti/utils": "^0.0.8",
     "tus-js-client": "^4.2.3"
   },
   "devDependencies": {

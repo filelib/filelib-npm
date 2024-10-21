@@ -7,12 +7,11 @@ import { AuthOptions, FilelibClientOpts, UploaderOpts } from "../types"
 import Auth from "./auth"
 import BaseClient from "../blueprints/client"
 import Config from "../config"
-import { FileConfigRequiredError } from "../exceptions"
 import { default as FileReader } from "tus-js-client/lib/browser/fileReader"
 import Storage from "@justinmusti/storage/browser"
 import Uploader from "../uploader"
 
-const defaultOpts: Partial<FilelibClientOpts> = {
+export const defaultOpts: Partial<FilelibClientOpts> = {
     parallelUploads: 5,
     limit: 20,
     ignoreCache: false,
@@ -35,47 +34,29 @@ export default class Client extends BaseClient {
         console.log("BROWSER CLIENT INIT WITH auth", this.auth)
     }
 
-    addFile({
-        id,
-        file,
-        config,
-        onProgress,
-        onSuccess,
-        metadata,
-        ...rest
-    }: {
-        id: UploaderOpts["id"]
-        file: File
-        config?: Config
-        onProgress?: UploaderOpts["onProgress"]
-        onSuccess?: UploaderOpts["onSuccess"]
-        metadata?: UploaderOpts["metadata"]
-    }) {
+    addFile({ id, file, config, metadata, ...rest }: Omit<UploaderOpts, "auth" | "file" | "storage"> & { file: File }) {
         console.log("ADDING FILE FOR BROWSER CLIENT", file)
-        if (!config && !this.config) {
-            throw new FileConfigRequiredError("Config must be provided for file.")
-        }
-        console.log(
-            "ID",
-            id,
-            this.files.find((x) => x.id === id)
-        )
-        if (id && this.files.find((x) => x.id === id)) return
+        const uploaderOpts = { ...this.opts, ...rest }
+
+        this.validateAddFile({ id, config })
 
         const _file = new FileReader().openFile(file, metadata.size)
-        console.log("PUSHING TO LIST")
-        this.files.push(
-            new Uploader({
-                id,
-                file: _file,
-                config: config ?? this.config!,
-                auth: this.auth,
-                metadata,
-                onProgress,
-                onSuccess,
-                storage: new Storage(),
-                ...rest
-            })
-        )
+
+        try {
+            this.files.push(
+                new Uploader({
+                    id,
+                    file: _file,
+                    config: config ?? this.config!,
+                    auth: this.auth,
+                    metadata,
+                    storage: new Storage({ prefix: "filelib" }),
+                    ...uploaderOpts
+                })
+            )
+        } catch (e) {
+            console.log("ERROR ADDING FILE", e)
+            uploaderOpts?.onError(metadata, e)
+        }
     }
 }

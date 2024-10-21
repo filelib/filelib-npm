@@ -1,4 +1,5 @@
 import Auth from "./blueprints/auth"
+import { BaseError } from "./exceptions"
 import Config from "./config"
 import { CREDENTIAL_SOURCE_OPTIONS } from "./constants"
 import { FileSource } from "tus-js-client"
@@ -11,15 +12,23 @@ export interface AuthOptions {
     source_file?: string
 }
 
-export interface FilelibClientOpts extends Partial<AuthOptions> {
+export interface FilelibClientOptionsEventHandlers {
+    onProgress?: ((bytesSent: number, bytesTotal: number) => void) | null
+    onChunkComplete?: ((chunkSize: number, bytesAccepted: number, bytesTotal: number) => void) | null
+    onSuccess?: ((file: FilelibFile) => void) | null
+    onError?: ((fileMetadata: MetaData, error: InstanceType<BaseError | Error>) => void) | null
+    onRetry?: ((error: Error, retryAttempt: number) => boolean) | null
+}
+
+export interface FilelibClientOpts extends Partial<AuthOptions>, FilelibClientOptionsEventHandlers {
     // ignoreCache, abortOnFail, clearCache, chunkSize
 
     auth?: Auth
     source?: AuthOptions["source"]
     config?: Config
     parallelUploads?: number
+    headers?: { [key: string]: string }
 
-    // export interface FilelibUppyOpts extends PluginOpts {
     authKey?: string // Filelib credentials Auth/API key
     metadata?: MetaData
 
@@ -27,13 +36,6 @@ export interface FilelibClientOpts extends Partial<AuthOptions> {
     ignoreCache?: boolean
     abortOnFail?: boolean
     clearCache?: boolean
-
-    onProgress?: ((bytesSent: number, bytesTotal: number) => void) | null
-    onChunkComplete?: ((chunkSize: number, bytesAccepted: number, bytesTotal: number) => void) | null
-    onSuccess?: ((file: FilelibFile) => void) | null
-    onError?: ((error: Error) => void) | null
-    onShouldRetry?: ((error: Error, retryAttempt: number) => boolean) | null
-    headers?: { [key: string]: string }
 }
 
 interface ConfigOpts {
@@ -81,9 +83,15 @@ export interface UploaderOpts {
     auth: Auth
     metadata: MetaData
     workers?: number
-    onProgress?: (bytesUploaded: number, bytesTotal: number) => void
-    onSuccess?: (file: FilelibFile) => void
     storage: Storage
+    // Callbacks
+    onSuccess?: (file: FilelibFile) => void
+    onProgress?: (bytesUploaded: number, bytesTotal: number) => void
+    onError?: FilelibClientOpts["onError"]
+    // Caching options
+    useCache?: boolean // defaults to true.
+    clearCacheOnSuccess?: boolean // defaults to false
+    clearCacheOnError?: boolean // defaults to false
 }
 
 export interface MetaData {

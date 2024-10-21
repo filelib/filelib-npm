@@ -1,8 +1,8 @@
+import { FileConfigRequiredError, FileIDDuplicateError, NoFileToUploadError } from "../exceptions"
 import { FilelibClientOpts, UploaderOpts } from "../types"
 import Auth from "./auth"
 import Config from "../config"
 import { groupArray } from "@justinmusti/utils"
-import { NoFileToUploadError } from "../exceptions"
 import Uploader from "../uploader"
 
 export const defaultClientOpts = {
@@ -38,6 +38,23 @@ export default abstract class BaseClient {
         const fileIndex = this.files.findIndex((x) => x.id === id)
         if (fileIndex > -1) {
             this.files.splice(fileIndex, 1)
+        }
+    }
+
+    validateAddFile({ id, config }: Pick<UploaderOpts, "id" | "config">) {
+        // Ensure config exits.
+        if (!config && !this.config) {
+            throw new FileConfigRequiredError("Config must be provided for file.")
+        }
+
+        // Check if there is a duplicate file
+        if (this.files.length > 0 && id && this.files.find((x) => x.id === id)) {
+            console.log(
+                "ID",
+                id,
+                this.files.find((x) => x.id === id)
+            )
+            throw new FileIDDuplicateError(`A file with the same id: ${id} is already added.`)
         }
     }
 
