@@ -1,48 +1,26 @@
 {
-  "extends": "./tsconfig-build.json",
-  "compilerOptions": {
-    "esModuleInterop": true,
-    // Enable latest features
-    "types": [
-      "node",
-      "bun"
-    ],
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "lib": [
-      "ES2015",
-      "ES2018",
-      "ESNext",
-      "ES2020",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "baseUrl": ".",
-    "rootDir": ".",
-    "sourceRoot": "./",
-    "sourceMap": true,
-    "outDir": "./dist/",
-    "typeRoots": [
-      "node_modules/@types",
-      "node_modules/@types/node",
-      "node_modules/@types/bun",
-      "./src/types.d.ts"
+    "extends": "./tsconfig-build.json",
+    "compilerOptions": {
+        "esModuleInterop": true,
+        // Enable latest features
+        "types": ["node", "bun"],
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "lib": ["ES2015", "ES2018", "ESNext", "ES2020", "DOM", "DOM.Iterable"],
+        "baseUrl": ".",
+        "rootDir": ".",
+        "sourceRoot": "./",
+        "sourceMap": true,
+        "outDir": "./dist/",
+        "typeRoots": ["node_modules/@types", "node_modules/@types/node", "node_modules/@types/bun", "./src/types.d.ts"]
+    },
+    "include": ["./tests", "./tests/*", "./tests/**/*", "./src/**/*", "./src/browser", "./src/node"],
+    "exclude": [
+        "./node_modules",
+        "./node_modules/**/*",
+        "./node_modules/*",
+        "./dist/",
+        "./dist/*",
+        "./eslint.config.mjs"
     ]
-  },
-  "include": [
-    "./tests",
-    "./tests/*",
-    "./tests/**/*",
-    "./src/**/*",
-    "./src/browser",
-    "./src/node"
-  ],
-  "exclude": [
-    "./node_modules",
-    "./node_modules/**/*",
-    "./node_modules/*",
-    "./dist/",
-    "./dist/*",
-    "./eslint.config.mjs"
-  ]
 }
