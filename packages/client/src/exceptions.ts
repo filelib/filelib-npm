@@ -83,3 +83,9 @@ export class NotImplementedError extends BaseError {}
  * Raise when an upload fails
  */
 export class UploadError extends BaseError {}
+
+/**
+ * Raise when a network error happens
+ * Mostly when a CORS failure, but it cannot be caught as JS would have no access to it.
+ * */
+export class NetworkError extends BaseError {}

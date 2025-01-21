@@ -29,7 +29,7 @@ export default class Auth extends BaseAuth {
      * - Create cookie with iframe response.
      * - include it in the request to authenticate.
      */
-    private createIFrame() {
+    private async createIFrame() {
         if (!document) {
             return Promise.reject("No Browser document detected.")
         }
@@ -39,9 +39,18 @@ export default class Auth extends BaseAuth {
         }
 
         const target = `${FILELIB_API_AUTH_BROWSER_URL}${this.authKey}/`
+        const iframeReq = await fetch(target)
+        if (!iframeReq.ok) {
+            const errorResponse = await iframeReq.json()
+            throw new Error(errorResponse.error)
+        }
+
+        const iframeResBlob = await iframeReq.blob()
+        const targetURL = URL.createObjectURL(iframeResBlob)
         const iframeName = "filelib-auth-iframe"
+
         let IframeEl = document.createElement("iframe")
-        IframeEl.setAttribute("src", target)
+        IframeEl.setAttribute("src", targetURL)
         IframeEl.setAttribute("name", iframeName)
         IframeEl.setAttribute("width", "130px")
         IframeEl.setAttribute("height", "130px")

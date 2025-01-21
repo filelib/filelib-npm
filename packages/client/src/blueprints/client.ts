@@ -8,9 +8,8 @@ import Uploader from "../uploader"
 export const defaultClientOpts = {
     limit: 20,
     parallelUploads: 5,
-
     abortOnFail: false,
-    ignoreCache: false,
+    useCache: true,
     clearCache: false
 } as FilelibClientOpts
 
@@ -49,11 +48,6 @@ export default abstract class BaseClient {
 
         // Check if there is a duplicate file
         if (this.files.length > 0 && id && this.files.find((x) => x.id === id)) {
-            console.log(
-                "ID",
-                id,
-                this.files.find((x) => x.id === id)
-            )
             throw new FileIDDuplicateError(`A file with the same id: ${id} is already added.`)
         }
     }
@@ -81,20 +75,23 @@ export default abstract class BaseClient {
      */
     upload() {
         this.canUpload({ raise_exp: true })
-        this.auth.get_access_token().then(() => {
-            console.log("UPLOAD STARTING", this.opts)
-            const groupedUploads = groupArray<Uploader>(this.files, this.opts.parallelUploads)
-            console.log("GROUPED UPLOADS", groupedUploads)
-            for (const uploads of groupedUploads) {
-                Promise.allSettled(
-                    uploads.map((u) => {
-                        return new Promise((resolve) => {
-                            console.log("CLIENT UPLOAD ITEM", u)
-                            return resolve(u.upload())
+        this.auth
+            .get_access_token()
+            .then(() => {
+                const groupedUploads = groupArray<Uploader>(this.files, this.opts.parallelUploads)
+
+                for (const uploads of groupedUploads) {
+                    Promise.allSettled(
+                        uploads.map((u) => {
+                            return new Promise((resolve) => {
+                                return resolve(u.upload())
+                            })
                         })
-                    })
-                ).then((results) => console.log("PROMISE POOL SETTLEMENT", results))
-            }
-        })
+                    )
+                }
+            })
+            .catch((e) => {
+                this.opts.onError(e)
+            })
     }
 }

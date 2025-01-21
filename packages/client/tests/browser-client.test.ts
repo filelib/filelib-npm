@@ -14,12 +14,10 @@ describe("Browser Client Init", () => {
 
     test("Ensure client has an empty files property on initiation", () => {
         const client = new Client({ authKey: "test-auth-key" })
-        console.log("FILES", client.files)
         expect(client.files).toEqual([])
     })
     test("Ensure client has default options assigned on initiation", () => {
         const client = new Client({ authKey: "test-auth-key" })
-        console.log("FILES", client.opts)
         expect(client.opts).toEqual(defaultOpts)
     })
 })

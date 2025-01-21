@@ -1,5 +1,4 @@
 import {
-    FILE_UPLOAD_STATUS_HEADER,
     FILELIB_API_UPLOAD_URL,
     MAX_CHUNK_SIZE,
     MIN_CHUNK_SIZE,
@@ -62,12 +61,6 @@ export default class Uploader {
         this.bytesUploaded = 0
         this.storage = storage
         this.opts = { ...defaultOptions, ...rest }
-
-        console.log("Uploader INITED WITH ID", id)
-        console.log("Uploader INITED WITH AUTH", auth)
-        console.log("Uploader INITED WITH file", file)
-        console.log("Uploader INITED WITH config", config)
-        console.log("Uploader INITED WITH metadata", metadata)
     }
 
     private gen_init_payload() {
@@ -113,7 +106,6 @@ export default class Uploader {
     }
 
     private hasCache() {
-        console.log("CHECKING CACHE", this.getCacheKey())
         return this.opts.useCache && this.storage.has(this.getCacheKey())
     }
 
@@ -138,57 +130,55 @@ export default class Uploader {
             creationTime: new Date().toISOString(),
             ...(overrides ?? {})
         })
-        console.log("SETTING CACHE", this.getCacheKey(), payload)
         this.storage.set(this.getCacheKey(), payload)
     }
 
     private async initUploadFromCache() {
-        console.log("INITING FROM CACHE")
-        const cachedpaylaod = this.storage.get(this.getCacheKey(), {})
-        if (!cachedpaylaod?.uploadURL) {
+        const cachedPayload = this.storage.get(this.getCacheKey(), {})
+        if (!cachedPayload?.uploadURL) {
             this.storage.unset(this.getCacheKey())
             return this.initUpload()
         }
-        console.log("CACHE PAYLOAD", cachedpaylaod)
-        console.log("CAHCED UPLOAD URL", cachedpaylaod.uploadURL)
-        await this.headFile(cachedpaylaod?.uploadURL)
+
+        await this.retrieveFile(cachedPayload.uploadURL)
     }
 
     /**
      * Fetch file status from FileLib API
      */
-    async headFile(fileURL: string) {
-        const { headers, response } = await request(fileURL, {
-            method: "HEAD",
+    async retrieveFile(fileURL: string) {
+        const {
+            headers,
+            response: { data }
+        } = await request(fileURL, {
+            method: "GET",
             headers: await this.auth.to_headers()
         })
-        console.log("HEAD FILE RESPONSE headers", headers)
-        headers.forEach((value, key) => console.log("HEADER", key, value))
-        // Check if completed.
-
-        console.log("HEADERS HAS STATUS", headers.has(FILE_UPLOAD_STATUS_HEADER))
-        console.log("HEADERS STATUS VALUE", headers.get(FILE_UPLOAD_STATUS_HEADER))
-        if (headers.has(FILE_UPLOAD_STATUS_HEADER)) {
-            if (headers.get(FILE_UPLOAD_STATUS_HEADER).toLowerCase() === UPLOAD_COMPLETED) {
-                // Call the onProgress and mark it completed.
-                this.opts.onProgress(this.metadata.size, this.metadata.size)
-                const file = await getFile({ auth: this.auth, fileURL })
-                this.opts.onSuccess(file)
-                console.log("THIS UPLOAD COMPLETED")
-            }
-        }
-        this.parseHeaders(headers)
-        console.log("HEAD FILE RESPONSE response", response)
+        this.prepClassForUpload({ headers, responseData: data })
     }
 
     /**
      *
      * @private
      */
-    private prepClassForUpload({ uploadURL, uploadStatus, uploadPartNumberMap }) {
-        this.LOCATION = uploadURL
-        this.FILE_UPLOAD_STATUS = uploadStatus
-        this.UPLOAD_PART_NUMBER_MAP = uploadPartNumberMap
+    private prepClassForUpload({
+        headers,
+        responseData
+    }: {
+        headers: Headers
+        responseData: {
+            location: string
+            status: string
+            upload_urls: UploadUrlMap
+        }
+    }) {
+        this.LOCATION = responseData.location
+        this.FILE_UPLOAD_STATUS = responseData.status.toLowerCase()
+        this.UPLOAD_PART_NUMBER_MAP = responseData.upload_urls
+
+        this.MAX_CHUNK_SIZE = parseInt(headers.get(UPLOAD_MAX_CHUNK_SIZE_HEADER)!) ?? this.MAX_CHUNK_SIZE
+        this.MIN_CHUNK_SIZE = parseInt(headers.get(UPLOAD_MIN_CHUNK_SIZE_HEADER)!) ?? this.MIN_CHUNK_SIZE
+        this.UPLOAD_CHUNK_SIZE = parseInt(headers.get(UPLOAD_CHUNK_SIZE_HEADER)!) ?? this.UPLOAD_CHUNK_SIZE
     }
 
     /**
@@ -220,11 +210,8 @@ export default class Uploader {
         })
 
         if (error) throw new FilelibAPIResponseError(error)
-        this.parseHeaders(resHeaders)
+        this.prepClassForUpload({ headers: resHeaders, responseData: data })
 
-        // Set the UPLOAD URL MAP FOR EACH CHUNK
-        this.UPLOAD_PART_NUMBER_MAP = data.upload_urls
-        this.LOCATION = data.location
         await this.setCache()
         return data
     }
@@ -232,30 +219,20 @@ export default class Uploader {
     async getChunk(partNumber: number) {
         const offset_start = this.UPLOAD_CHUNK_SIZE * (partNumber - 1)
         const offset_end = this.UPLOAD_CHUNK_SIZE * (partNumber - 1) + this.UPLOAD_CHUNK_SIZE
-        console.log("SLICE START, END ", offset_start, offset_end)
-        console.log("FILE OBJECT", this.file)
-        console.log("FILE TYPE", this.file.constructor.name)
         const source = await this.file
-        console.log("SOURCE TYPE", source.constructor.name)
         return await source.slice(offset_start, offset_end)
     }
 
     async getHash(): Promise<number> {
         const source = await this.file
-        console.log("FILE SIZE", this.metadata.size)
         const offset_end = Math.min(1000, this.metadata.size ?? 1000)
         const chunk = await source.slice(0, offset_end)
-
         const payload = await chunk.value.text()
-        // console.log("CREATING HAS FROM PAYLOAD", payload)
-        const hash = genHash(payload)
-        console.log("CREATED HASH", hash)
-        return hash
+        return genHash(payload)
     }
 
     async uploadPart(partNumber: number) {
         const { url, log_url, method } = this.UPLOAD_PART_NUMBER_MAP[partNumber]
-        console.log("UPLOADING CHUNK", partNumber, url, log_url, method)
         const authHeaders = await this.auth.to_headers()
         const chunk = await this.getChunk(partNumber)
 
@@ -266,14 +243,13 @@ export default class Uploader {
             body: chunk.value
         })
         if (error) {
+            this.opts.onError(this.metadata, error)
             throw new Error(error)
         }
         if (response.ok) {
-            console.log("LOGGING SUCCESS PART", partNumber)
             await request(log_url, { method: "POST", headers: { ...authHeaders } })
         }
         this.FILE_UPLOAD_STATUS = UPLOAD_STARTED
-        console.log("COMPLETED CHUNK", partNumber, this.LOCATION)
         const chunkSize = chunk.value.size
         this.bytesUploaded += chunkSize
         this.opts.onProgress(this.bytesUploaded, this.metadata.size)
@@ -289,27 +265,21 @@ export default class Uploader {
      */
     async process_chunks() {
         const part_numbers = Object.keys(this.UPLOAD_PART_NUMBER_MAP).map((v) => parseInt(v))
-        const authHeaders = await this.auth.to_headers()
-        console.log("AUTH HEADERS", authHeaders)
         const lastPartNumber = Math.max(...part_numbers)
         part_numbers.indexOf(lastPartNumber)
         const index = part_numbers.indexOf(lastPartNumber)
         if (index !== -1) {
             part_numbers.splice(index, 1)
         }
-        console.log("PART NUMBERS", part_numbers)
         const groupedParts = groupArray<number>(part_numbers, this.opts.workers)
-        console.log("GROUPED ARRAY", groupedParts)
         for (const partGroup of groupedParts) {
-            const settlements = await Promise.allSettled(
+            await Promise.allSettled(
                 partGroup.map((p) => {
                     return this.uploadPart(p)
                 })
             )
-            // Promise.allSettled(partGroup.map(async (p) => await this.uploadPart(p))).then(console.log)
-            console.log("PROMISE POOL SETTLEMENT", settlements)
         }
-        console.log("UPLOADING LAST PART", lastPartNumber)
+
         await this.uploadPart(lastPartNumber)
         const file = await getFile({ auth: this.auth, fileURL: this.LOCATION })
         this.opts.onSuccess(file)
@@ -318,17 +288,17 @@ export default class Uploader {
     }
 
     async upload() {
-        // return Promise.resolve(`UPLOADED ${this.metadata.name}`)
         try {
             await this.initUpload()
-            const location = this.LOCATION
-            console.log("UPLOAD CHUNK LOCATION", location)
-            console.log("PART NUMBER MAP", this.UPLOAD_PART_NUMBER_MAP)
+            if (this.FILE_UPLOAD_STATUS === UPLOAD_COMPLETED) {
+                this.opts.onProgress(this.metadata.size, this.metadata.size)
+                const file = await getFile({ auth: this.auth, fileURL: this.LOCATION })
+                this.opts.onSuccess(file)
+                return Promise.resolve(`UPLOADED FROM CACHE ${this.metadata.name}`)
+            }
             await this.process_chunks()
-            console.warn(`Processed file ${this.metadata.name}`)
             return Promise.resolve(`UPLOADED ${this.metadata.name}`)
         } catch (e: unknown) {
-            console.error("UPLOADER UPLOAD ERROR:", e)
             this.opts.onError(this.metadata, e as Error)
             return Promise.reject(`Failed file ${this.metadata.name} with logged reason`)
         }

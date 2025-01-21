@@ -14,7 +14,7 @@ import Uploader from "../uploader"
 export const defaultOpts: Partial<FilelibClientOpts> = {
     parallelUploads: 5,
     limit: 20,
-    ignoreCache: false,
+    useCache: true,
     abortOnFail: true,
     clearCache: false
 }
@@ -31,18 +31,14 @@ export default class Client extends BaseClient {
         this.files = []
         this.config = config
         this.opts = { ...defaultOpts, ...opts }
-        console.log("BROWSER CLIENT INIT WITH auth", this.auth)
     }
 
     addFile({ id, file, config, metadata, ...rest }: Omit<UploaderOpts, "auth" | "file" | "storage"> & { file: File }) {
-        console.log("ADDING FILE FOR BROWSER CLIENT", file)
         const uploaderOpts = { ...this.opts, ...rest }
-
-        this.validateAddFile({ id, config })
-
-        const _file = new FileReader().openFile(file, metadata.size)
-
         try {
+            this.validateAddFile({ id, config })
+
+            const _file = new FileReader().openFile(file, metadata.size)
             this.files.push(
                 new Uploader({
                     id,
@@ -55,7 +51,6 @@ export default class Client extends BaseClient {
                 })
             )
         } catch (e) {
-            console.log("ERROR ADDING FILE", e)
             uploaderOpts?.onError(metadata, e)
         }
     }

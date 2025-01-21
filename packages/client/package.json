@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "rm -rf ./dist && copyfiles -u 1 \"src/**/*.d.ts\" dist &&  tsc -p ./tsconfig-build.json  --skipLibCheck ",
-    "pack": "npm run build || true && rm -rf ./packs/* && npm pack --pack-destination=./packs",
+    "pack": "npm run build || true && mkdir -p packs && rm -rf ./packs/* && npm pack --pack-destination=./packs",
     "lint": "eslint .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

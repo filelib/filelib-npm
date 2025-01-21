@@ -24,7 +24,13 @@ export default class FilelibUppy<M extends Meta, B extends Body> extends BasePlu
         super(uppy, { ...defaultOptions, ...opts })
         this.type = "uploader"
         this.id = this.opts.id || "Filelib"
-        this.client = new Client({ authKey: opts.authKey })
+        const onError = (err: UploadError) => {
+            console.log("INIT ERROR", err)
+            this.uppy.emit("error", err)
+            this.opts?.onError(err)
+        }
+
+        this.client = new Client({ authKey: opts.authKey, onError })
 
         this.uppy.on("file-removed", (file) => {
             console.log("REMOVING FILE", file)
@@ -60,17 +66,18 @@ export default class FilelibUppy<M extends Meta, B extends Body> extends BasePlu
             this.opts?.onSuccess(filelibFile)
         }
 
-        const onError: UploaderOpts["onError"] = function (fileMeta, err: UploadError) {
+        const onError: UploaderOpts["onError"] = (fileMeta, err: UploadError) => {
             console.log("UPLOAD ERROR", file, err)
             this.uppy.emit("upload-error", file, err)
 
-            this.opts?.onError(fileMeta, err)
+            this.opts?.onError(err)
         }
 
         this.client.addFile({
             id: file.id,
             file: file.data as File,
             config: this.opts.config,
+            useCache: this.client.opts.useCache,
             metadata: { name: file.name, size: file.size, type: file.type },
             onProgress,
             onSuccess,

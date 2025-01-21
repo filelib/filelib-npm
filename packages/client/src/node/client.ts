@@ -35,10 +35,6 @@ export default class Client extends BaseClient {
                 throw new FileDoesNotExistError("No file found at given path: " + file)
             }
 
-            console.log("ADDING FILE INFO", statSync(file))
-            console.log("ADDING FILE PATH BASENAME ", path.basename(file))
-            console.log("ADDING FILE PATH EXTNAME ", path.extname(file))
-
             const metadata = {
                 name: path.basename(file),
                 size: statSync(file).size,

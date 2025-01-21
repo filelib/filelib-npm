@@ -23,8 +23,6 @@ export function getFile({
             if (!status && error) {
                 throw new Error(error)
             }
-            console.log("FILE DETAIL ERROR", error)
-            console.log("FILE DETAILS AQWUIRED", status, error, file)
             return file as FilelibFile
         })
     })

@@ -7,7 +7,7 @@ export interface FilelibUppyOpts extends FilelibClientOpts, PluginOpts {
     config?: FilelibClientOpts["config"]
     parallelUploads?: FilelibClientOpts["parallelUploads"]
     limit?: FilelibClientOpts["limit"]
-    ignoreCache: FilelibClientOpts["ignoreCache"]
+    useCache: FilelibClientOpts["useCache"]
     abortOnFail: FilelibClientOpts["abortOnFail"]
     clearCache: FilelibClientOpts["clearCache"]
 

@@ -16,13 +16,11 @@ export interface FilelibClientOptionsEventHandlers {
     onProgress?: ((bytesSent: number, bytesTotal: number) => void) | null
     onChunkComplete?: ((chunkSize: number, bytesAccepted: number, bytesTotal: number) => void) | null
     onSuccess?: ((file: FilelibFile) => void) | null
-    onError?: ((fileMetadata: MetaData, error: InstanceType<BaseError | Error>) => void) | null
+    onError?: ((error: InstanceType<BaseError | Error>) => void) | null
     onRetry?: ((error: Error, retryAttempt: number) => boolean) | null
 }
 
 export interface FilelibClientOpts extends Partial<AuthOptions>, FilelibClientOptionsEventHandlers {
-    // ignoreCache, abortOnFail, clearCache, chunkSize
-
     auth?: Auth
     source?: AuthOptions["source"]
     config?: Config
@@ -33,7 +31,7 @@ export interface FilelibClientOpts extends Partial<AuthOptions>, FilelibClientOp
     metadata?: MetaData
 
     limit?: number
-    ignoreCache?: boolean
+    useCache?: boolean
     abortOnFail?: boolean
     clearCache?: boolean
 }
@@ -87,7 +85,7 @@ export interface UploaderOpts {
     // Callbacks
     onSuccess?: (file: FilelibFile) => void
     onProgress?: (bytesUploaded: number, bytesTotal: number) => void
-    onError?: FilelibClientOpts["onError"]
+    onError?: ((fileMetadata: MetaData, error: InstanceType<BaseError | Error>) => void) | null
     // Caching options
     useCache?: boolean // defaults to true.
     clearCacheOnSuccess?: boolean // defaults to false
