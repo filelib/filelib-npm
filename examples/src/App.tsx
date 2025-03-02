@@ -37,9 +37,12 @@ function App() {
                     <Text>Use the following the test the uploader.</Text>
                     <Button
                         onClick={() => {
-                            // console.log("UPPY", uppy)
-                            // console.log("CLIENT CLIENT", (uppy.getPlugin("Filelib") as FilelibUppy).client)
-                            // console.log("CLIENT FILES", (uppy.getPlugin("Filelib") as FilelibUppy).client.files)
+                            // eslint-disable-next-line no-console
+                            console.log("UPPY", uppy)
+                            // eslint-disable-next-line no-console
+                            console.log("CLIENT CLIENT", (uppy.getPlugin("Filelib") as FilelibUppy).client)
+                            // eslint-disable-next-line no-console
+                            console.log("CLIENT FILES", (uppy.getPlugin("Filelib") as FilelibUppy).client.files)
                         }}
                     >
                         {" "}
