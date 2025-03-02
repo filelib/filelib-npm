@@ -18,8 +18,8 @@
     "author": "Filelib",
     "license": "MIT",
     "peerDependencies": {
-        "@uppy/core": "^4.0.0",
-        "@uppy/utils": "^6.0.0"
+        "@uppy/core": "^4.4.2",
+        "@uppy/utils": "^6.1.2"
     },
     "devDependencies": {
         "@types/node": "^22.5.2",
@@ -28,6 +28,7 @@
         "typescript": "^5.5.4"
     },
     "dependencies": {
-        "@filelib/client": "file:/home/musti/repos/filelib-npm/packages/client/packs/filelib-client-0.0.1.tgz"
+        "@filelib/client": "file:/home/musti/repos/filelib-npm/packages/client/packs/filelib-client-0.0.1.tgz",
+        "@uppy/status-bar": "^4.1.1"
     }
 }

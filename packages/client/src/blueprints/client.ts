@@ -36,6 +36,7 @@ export default abstract class BaseClient {
     removeFile({ id }: Pick<UploaderOpts, "id">): void {
         const fileIndex = this.files.findIndex((x) => x.id === id)
         if (fileIndex > -1) {
+            this.files[fileIndex]?.abort("Upload terminated: File is removed by user.")
             this.files.splice(fileIndex, 1)
         }
     }

@@ -1,4 +1,6 @@
+import { AbortControllerPassiveError, FilelibAPIResponseError } from "./exceptions"
 import {
+    FILE_UPLOAD_STATUS_HEADER,
     FILELIB_API_UPLOAD_URL,
     MAX_CHUNK_SIZE,
     MIN_CHUNK_SIZE,
@@ -14,7 +16,6 @@ import { KeyMap, MetaData, UploaderOpts, UploadUrlMap } from "./types"
 import Auth from "./blueprints/auth"
 
 import Config from "./config"
-import { FilelibAPIResponseError } from "./exceptions"
 import { getFile } from "./utils"
 import request from "./request"
 
@@ -38,6 +39,7 @@ export default class Uploader {
     storage: UploaderOpts["storage"]
     opts: Partial<UploaderOpts>
 
+    abortController: AbortController
     // This is the placeholder for a given file after it gets initialized in Filelib API.
     LOCATION: string
 
@@ -61,13 +63,19 @@ export default class Uploader {
         this.bytesUploaded = 0
         this.storage = storage
         this.opts = { ...defaultOptions, ...rest }
+
+        this.abortController = new AbortController()
+        this.abortController.signal.onabort = () => {
+            throw new AbortControllerPassiveError("Request aborted.")
+        }
     }
 
     private gen_init_payload() {
         return {
             file_name: this.metadata.name,
             file_size: this.metadata.size,
-            mimetype: this.metadata.type
+            mimetype: this.metadata.type,
+            chunk_size: 6 * 1024 * 1024
         }
     }
 
@@ -80,21 +88,6 @@ export default class Uploader {
             ...authHeaders,
             ...configHeaders
         }
-    }
-
-    /**
-     * Parse headers from initialization and status check and assign headers to the following:
-     * - MAX_CHUNK_SIZE,
-     * - MIN_CHUNK_SIZE
-     * - UPLOAD_CHUNK_SIZE
-     *
-     * @param headers
-     * @private
-     */
-    private parseHeaders(headers: Headers): void {
-        this.MAX_CHUNK_SIZE = parseInt(headers.get(UPLOAD_MAX_CHUNK_SIZE_HEADER)!) ?? this.MAX_CHUNK_SIZE
-        this.MIN_CHUNK_SIZE = parseInt(headers.get(UPLOAD_MIN_CHUNK_SIZE_HEADER)!) ?? this.MIN_CHUNK_SIZE
-        this.UPLOAD_CHUNK_SIZE = parseInt(headers.get(UPLOAD_CHUNK_SIZE_HEADER)!) ?? this.UPLOAD_CHUNK_SIZE
     }
 
     /**
@@ -135,6 +128,7 @@ export default class Uploader {
 
     private async initUploadFromCache() {
         const cachedPayload = this.storage.get(this.getCacheKey(), {})
+
         if (!cachedPayload?.uploadURL) {
             this.storage.unset(this.getCacheKey())
             return this.initUpload()
@@ -152,9 +146,11 @@ export default class Uploader {
             response: { data }
         } = await request(fileURL, {
             method: "GET",
-            headers: await this.auth.to_headers()
+            headers: await this.auth.to_headers(),
+            signal: this.abortController.signal
         })
         this.prepClassForUpload({ headers, responseData: data })
+        return Promise.resolve(true)
     }
 
     /**
@@ -170,6 +166,7 @@ export default class Uploader {
             location: string
             status: string
             upload_urls: UploadUrlMap
+            missing_part_numbers: number[]
         }
     }) {
         this.LOCATION = responseData.location
@@ -179,6 +176,20 @@ export default class Uploader {
         this.MAX_CHUNK_SIZE = parseInt(headers.get(UPLOAD_MAX_CHUNK_SIZE_HEADER)!) ?? this.MAX_CHUNK_SIZE
         this.MIN_CHUNK_SIZE = parseInt(headers.get(UPLOAD_MIN_CHUNK_SIZE_HEADER)!) ?? this.MIN_CHUNK_SIZE
         this.UPLOAD_CHUNK_SIZE = parseInt(headers.get(UPLOAD_CHUNK_SIZE_HEADER)!) ?? this.UPLOAD_CHUNK_SIZE
+
+        if ([UPLOAD_STARTED].includes(headers.get(FILE_UPLOAD_STATUS_HEADER)?.toLowerCase())) {
+            this.UPLOAD_PART_NUMBER_MAP = Object.fromEntries(
+                responseData.missing_part_numbers.map((pn) => {
+                    return [pn, responseData.upload_urls[pn]]
+                })
+            )
+            const completedPartNumbers = Object.keys(responseData.upload_urls).filter(
+                (pn) => !responseData.missing_part_numbers.includes(parseInt(pn))
+            )
+            this.bytesUploaded = this.UPLOAD_CHUNK_SIZE * completedPartNumbers.length
+        }
+
+        this.opts?.onProgress(this.bytesUploaded, this.metadata.size)
     }
 
     /**
@@ -206,7 +217,8 @@ export default class Uploader {
         } = await request<dataType>(FILELIB_API_UPLOAD_URL, {
             method: "POST",
             headers,
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: this.abortController.signal
         })
 
         if (error) throw new FilelibAPIResponseError(error)
@@ -231,6 +243,9 @@ export default class Uploader {
         return genHash(payload)
     }
 
+    /**
+     * Upload a single chunk of the file identified by the part number provided.
+     * */
     async uploadPart(partNumber: number) {
         const { url, log_url, method } = this.UPLOAD_PART_NUMBER_MAP[partNumber]
         const authHeaders = await this.auth.to_headers()
@@ -240,14 +255,21 @@ export default class Uploader {
             method,
             credentials: "same-origin",
             headers: { "Content-Type": "application/octet-stream" },
-            body: chunk.value
+            body: chunk.value,
+            signal: this.abortController.signal
         })
+
         if (error) {
             this.opts.onError(this.metadata, error)
             throw new Error(error)
         }
+
+        if (this.abortController?.signal?.aborted) {
+            throw new AbortControllerPassiveError("Upload is terminated by user.")
+        }
+
         if (response.ok) {
-            await request(log_url, { method: "POST", headers: { ...authHeaders } })
+            await request(log_url, { method: "POST", headers: { ...authHeaders }, signal: this.abortController.signal })
         }
         this.FILE_UPLOAD_STATUS = UPLOAD_STARTED
         const chunkSize = chunk.value.size
@@ -273,9 +295,12 @@ export default class Uploader {
         }
         const groupedParts = groupArray<number>(part_numbers, this.opts.workers)
         for (const partGroup of groupedParts) {
+            if (this.abortController.signal.aborted) {
+                throw new AbortControllerPassiveError("Upload is paused/cancelled.")
+            }
             await Promise.allSettled(
-                partGroup.map((p) => {
-                    return this.uploadPart(p)
+                partGroup.map(async (p) => {
+                    return await this.uploadPart(p)
                 })
             )
         }
@@ -285,6 +310,14 @@ export default class Uploader {
         this.opts.onSuccess(file)
         this.FILE_UPLOAD_STATUS = UPLOAD_COMPLETED
         return true
+    }
+
+    abort(reason?: string) {
+        this.abortController.abort(reason)
+    }
+
+    unabort() {
+        this.abortController = new AbortController()
     }
 
     async upload() {
@@ -299,6 +332,9 @@ export default class Uploader {
             await this.process_chunks()
             return Promise.resolve(`UPLOADED ${this.metadata.name}`)
         } catch (e: unknown) {
+            if (e instanceof AbortControllerPassiveError) {
+                return
+            }
             this.opts.onError(this.metadata, e as Error)
             return Promise.reject(`Failed file ${this.metadata.name} with logged reason`)
         }

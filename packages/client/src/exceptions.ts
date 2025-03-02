@@ -89,3 +89,11 @@ export class UploadError extends BaseError {}
  * Mostly when a CORS failure, but it cannot be caught as JS would have no access to it.
  * */
 export class NetworkError extends BaseError {}
+
+/**
+ * Raise when we want to terminate process when AbortController cancels requests but we do not want to throw error.
+ * Just terminate process silently.
+ * */
+export class AbortControllerPassiveError extends BaseError {
+    name = "AbortControllerPassiveError"
+}

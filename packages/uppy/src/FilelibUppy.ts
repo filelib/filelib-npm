@@ -23,6 +23,7 @@ export default class FilelibUppy<M extends Meta, B extends Body> extends BasePlu
     constructor(uppy: Uppy<M, B>, opts: FilelibUppyOpts) {
         super(uppy, { ...defaultOptions, ...opts })
         this.type = "uploader"
+
         this.id = this.opts.id || "Filelib"
         const onError = (err: UploadError) => {
             this.uppy.emit("error", err)
@@ -35,13 +36,51 @@ export default class FilelibUppy<M extends Meta, B extends Body> extends BasePlu
             this.client.removeFile({ id: file.id })
         })
 
+        // Remove all queued files.
+        this.uppy.on("cancel-all", () => {
+            for (const fbFile of this.client.files) {
+                fbFile.abort("Terminated: All uploads cancelled by user.")
+            }
+            this.client.files = []
+        })
+
+        this.uppy.on("upload-pause", (file, isPaused) => {
+            const filelibFile = this.client.files.filter((f) => f.id === file.id)?.[0]
+            if (isPaused) {
+                filelibFile.abort("Paused: upload paused by user.")
+            } else {
+                filelibFile.unabort()
+                void filelibFile.upload()
+            }
+            this.uppy.setFileState(file.id, { isPaused })
+        })
+
+        this.uppy.on("pause-all", () => {
+            for (const f of this.client.files) {
+                f.abort()
+            }
+        })
+
         this.uppy.on("file-added", (file) => {
             this.addFile(file)
+        })
+
+        this.uppy.on("upload-retry", (file) => {
+            const ff = this.client.files.filter((f) => f.id === file.id)?.[0]
+            ff?.unabort()
+            ff?.upload()
+        })
+
+        this.uppy.on("retry-all", () => {
+            for (const f of this.client.files) {
+                f.unabort()
+                f.upload()
+            }
         })
     }
 
     private addFile(file: UppyFile<M, B>) {
-        const onProgress = (bytesUploaded: number, bytesTotal: number) => {
+        const onProgress = (bytesUploaded: number) => {
             this.uppy.emit("upload-progress", file, {
                 // uploadStarted: f.progress.uploadStarted ?? 0,
                 uploadStarted: 1,
@@ -63,7 +102,6 @@ export default class FilelibUppy<M extends Meta, B extends Body> extends BasePlu
 
         const onError: UploaderOpts["onError"] = (fileMeta, err: UploadError) => {
             this.uppy.emit("upload-error", file, err)
-
             this.opts?.onError(err)
         }
 
@@ -79,6 +117,8 @@ export default class FilelibUppy<M extends Meta, B extends Body> extends BasePlu
         })
     }
 
+    // TODO: This will be updated when remote-file upload implemented.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     uploadFiles = async (files: UppyFile<M, B>[]): Promise<void> => {
         if (!this.client.files || this.client.files.length < 1) {
             this.uppy.emit("error", new Error("No Files to upload in Filelib Client."))
@@ -96,6 +136,16 @@ export default class FilelibUppy<M extends Meta, B extends Body> extends BasePlu
         }
 
         this.uppy.log("[Filelib] Uploading...")
+        const currentState = this.uppy.getState()
+        // Without setting capabilities.resumableUploads to true, UI does not present resume/pause button
+        this.uppy.setState({
+            capabilities: {
+                ...currentState.capabilities,
+                uploadProgress: true,
+                individualCancellation: true,
+                resumableUploads: true
+            }
+        })
         const filesToUpload = this.uppy.getFilesByIds(fileIDs)
         const filesFiltered = filterNonFailedFiles(filesToUpload)
         const filesToEmit = filterFilesToEmitUploadStarted(filesFiltered)

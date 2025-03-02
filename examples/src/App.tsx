@@ -4,27 +4,30 @@ import "@uppy/core/dist/style.min.css"
 import "@uppy/dashboard/dist/style.min.css"
 
 import { Button, Flex, Stack, Text } from "@chakra-ui/react"
+import { Config } from "@filelib/client"
 import { Dashboard } from "@uppy/react"
 import FilelibUppy from "@filelib/uppy"
-
+import { FilelibUppyOpts } from "@filelib/uppy/src/types"
+import StatusBar from "@uppy/status-bar"
 import Uppy from "@uppy/core"
-import { Config } from "@filelib/client"
 
 // Don’t forget to keep the Uppy instance outside your component.
-const uppy = new Uppy({ id: "UppyDashboard" }).use(FilelibUppy, {
+const uppy = new Uppy({ id: "UppyDashboard" }).use(StatusBar, { hidePauseResumeButton: false }).use(FilelibUppy, {
     authKey: "6fe1ed21-165e-41e8-8abb-d5bc9953caf2",
-    // authKey: "9e25d144-8715-4dc2-9c96-e55b3dfacb5e",
 
     onSuccess: (file) => {
-        console.log("FILE UPLOADED SUCCESSFULLY", file)
+        // eslint-disable-next-line no-console
+        console.log("Upload Success: Filelib File:", file)
     },
-    // chunkSize: 999999,
+    onError: (metadata, e) => {
+        // eslint-disable-next-line no-console
+        console.log("Upload Success: Filelib File:", metadata, e)
+    },
     useCache: true,
     abortOnFail: false,
     clearCache: false,
-    // config: new Config({ storage: "s3main" })
-    config: new Config({ storage: "digitaloceanspaces1" })
-})
+    config: new Config({ storage: "s3main" })
+} as FilelibUppyOpts)
 
 function App() {
     return (
@@ -34,10 +37,9 @@ function App() {
                     <Text>Use the following the test the uploader.</Text>
                     <Button
                         onClick={() => {
-                            console.log("UPPY", uppy)
-                            console.log("PLUGIN ID", FilelibUppy.id)
-                            console.log("CLIENT CLIENT", (uppy.getPlugin("Filelib") as FilelibUppy).client)
-                            console.log("CLIENT FILES", (uppy.getPlugin("Filelib") as FilelibUppy).client.files)
+                            // console.log("UPPY", uppy)
+                            // console.log("CLIENT CLIENT", (uppy.getPlugin("Filelib") as FilelibUppy).client)
+                            // console.log("CLIENT FILES", (uppy.getPlugin("Filelib") as FilelibUppy).client.files)
                         }}
                     >
                         {" "}

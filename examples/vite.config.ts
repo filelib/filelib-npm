@@ -11,6 +11,7 @@ import react from "@vitejs/plugin-react"
 
 // backloop.dev setup.
 export default defineConfig({
+    build: { sourcemap: "inline" },
     plugins: [react()],
     server: {
         port: 4443,
