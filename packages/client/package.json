@@ -17,28 +17,29 @@
         "./types": "./dist/types.d.ts"
     },
     "scripts": {
-        "build": "rm -rf ./dist && copyfiles -u 1 \"src/**/*.d.ts\" dist &&  tsc -p ./tsconfig-build.json  --skipLibCheck ",
+        "build": "npm run build:browser --prefix . && npm run build:node --prefix=.",
+        "build:browser": "rm -rf ./dist && copyfiles -u 1 \"src/**/*.d.ts\" dist &&  tsc -p ./tsconfig-build.json  --skipLibCheck ",
+        "build:node": "bun build src/node --outdir ./dist/  --target node",
         "pack": "npm run build || true && mkdir -p packs && rm -rf ./packs/* && npm pack --pack-destination=./packs",
         "lint": "eslint .",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "bun test"
     },
     "dependencies": {
-        "i": "^0.3.7",
+        "file-type": "^21.0.0",
         "ini": "^5.0.0",
         "jose": "^5.9.2",
         "uuid": "^10.0.0"
     },
     "peerDependencies": {
         "@justinmusti/storage": "^0.0.9",
-        "@justinmusti/utils": "^0.0.8",
-        "tus-js-client": "^4.2.3"
+        "@justinmusti/utils": "^0.0.8"
     },
     "devDependencies": {
         "@eslint/js": "^9.10.0",
         "@types/bun": "^1.1.11",
         "@types/eslint__js": "^8.42.3",
         "@types/ini": "^4.1.1",
-        "@types/node": "^22.7.4",
+        "@types/node": "^22.17.1",
         "@types/uuid": "^10.0.0",
         "bun": "^1.1.31",
         "bun-types": "^1.1.31",

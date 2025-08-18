@@ -1,3 +1,5 @@
+import { CredentialSource } from "./types"
+
 export const FILELIB_API_BASE_URL: string = "https://api.filelib.com"
 export const FILELIB_API_AUTH_URL: string = `${FILELIB_API_BASE_URL}/auth/`
 export const FILELIB_API_AUTH_BROWSER_URL: string = `${FILELIB_API_BASE_URL}/auth/browser/`
@@ -9,6 +11,13 @@ export const CREDENTIAL_SOURCE_FILE = "file"
 export const CREDENTIAL_SOURCE_ENV = "env"
 export const CREDENTIAL_SOURCE_DIRECT = "direct"
 export const CREDENTIAL_SOURCE_OPTIONS = [CREDENTIAL_SOURCE_FILE, CREDENTIAL_SOURCE_ENV, CREDENTIAL_SOURCE_DIRECT]
+export const CREDENTIAL_SOURCE_TYPES = [
+    CREDENTIAL_SOURCE_FILE,
+    CREDENTIAL_SOURCE_ENV,
+    CREDENTIAL_SOURCE_DIRECT
+] as const
+
+export const DEFAULT_SOURCE: CredentialSource = CREDENTIAL_SOURCE_FILE
 
 export const ENV_API_KEY_IDENTIFIER = "FILELIB_API_KEY"
 export const ENV_API_SECRET_IDENTIFIER = "FILELIB_API_SECRET"

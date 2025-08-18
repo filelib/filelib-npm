@@ -8,7 +8,7 @@ import { ApiResponse } from "./types"
 export default async function request<R = null, H = Headers>(url: string, options: RequestInit) {
     let error: string | null = null
     options = { credentials: "include", ...options }
-    let res: Response
+    let res: Response 
     let response = null
     try {
         res = await fetch(url, options)

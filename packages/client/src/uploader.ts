@@ -1,4 +1,5 @@
 import { AbortControllerPassiveError, FilelibAPIResponseError } from "./exceptions"
+import { CachePayload, KeyMap, MetaData, UploaderOpts, UploadUrlMap } from "./types"
 import {
     FILE_UPLOAD_STATUS_HEADER,
     FILELIB_API_UPLOAD_URL,
@@ -12,7 +13,6 @@ import {
     UPLOAD_STARTED
 } from "./constants"
 import { genHash, groupArray, strToASCII } from "@justinmusti/utils"
-import { KeyMap, MetaData, UploaderOpts, UploadUrlMap } from "./types"
 import Auth from "./blueprints/auth"
 
 import Config from "./config"
@@ -70,7 +70,7 @@ export default class Uploader {
         }
     }
 
-    private gen_init_payload() {
+    private genInitPayload() {
         return {
             file_name: this.metadata.name,
             file_size: this.metadata.size,
@@ -80,8 +80,8 @@ export default class Uploader {
     }
 
     private async getInitUploadHeaders() {
-        const authHeaders = await this.auth.to_headers()
-        const configHeaders = this.config.to_headers()
+        const authHeaders = await this.auth.toHeaders()
+        const configHeaders = this.config.toHeaders()
         return {
             Accept: "application/json",
             "Content-Type": "application/json",
@@ -122,13 +122,26 @@ export default class Uploader {
             uploadURL: this.LOCATION,
             creationTime: new Date().toISOString(),
             ...(overrides ?? {})
-        })
+        } as CachePayload)
         this.storage.set(this.getCacheKey(), payload)
     }
 
-    private async initUploadFromCache() {
-        const cachedPayload = this.storage.get(this.getCacheKey(), {})
+    /**
+     * Read and return the cache payload of the given file.
+     * @return JSON
+     * */
+    private async getCache(): Promise<CachePayload> {
+        let cachedPayload = this.storage.get(this.getCacheKey(), {})
+        if (typeof cachedPayload === "string") cachedPayload = JSON.parse(cachedPayload)
+        if (!cachedPayload?.uploadURL) {
+            this.storage.unset(this.getCacheKey())
+            return this.initUpload()
+        }
+        return cachedPayload
+    }
 
+    private async initUploadFromCache() {
+        const cachedPayload = await this.getCache()
         if (!cachedPayload?.uploadURL) {
             this.storage.unset(this.getCacheKey())
             return this.initUpload()
@@ -146,7 +159,7 @@ export default class Uploader {
             response: { data }
         } = await request(fileURL, {
             method: "GET",
-            headers: await this.auth.to_headers(),
+            headers: await this.auth.toHeaders(),
             signal: this.abortController.signal
         })
         this.prepClassForUpload({ headers, responseData: data })
@@ -201,9 +214,8 @@ export default class Uploader {
         if (this.hasCache()) {
             return this.initUploadFromCache()
         }
-
         const headers = await this.getInitUploadHeaders()
-        const payload = this.gen_init_payload()
+        const payload = this.genInitPayload()
 
         type dataType = {
             is_direct_upload: boolean
@@ -231,16 +243,13 @@ export default class Uploader {
     async getChunk(partNumber: number) {
         const offset_start = this.UPLOAD_CHUNK_SIZE * (partNumber - 1)
         const offset_end = this.UPLOAD_CHUNK_SIZE * (partNumber - 1) + this.UPLOAD_CHUNK_SIZE
-        const source = await this.file
-        return await source.slice(offset_start, offset_end)
+        return await this.file.slice(offset_start, offset_end)
     }
 
     async getHash(): Promise<number> {
-        const source = await this.file
         const offset_end = Math.min(1000, this.metadata.size ?? 1000)
-        const chunk = await source.slice(0, offset_end)
-        const payload = await chunk.value.text()
-        return genHash(payload)
+        const chunk = await this.file.slice(0, offset_end)
+        return genHash(new TextDecoder().decode(chunk))
     }
 
     /**
@@ -248,14 +257,14 @@ export default class Uploader {
      * */
     async uploadPart(partNumber: number) {
         const { url, log_url, method } = this.UPLOAD_PART_NUMBER_MAP[partNumber]
-        const authHeaders = await this.auth.to_headers()
+        const authHeaders = await this.auth.toHeaders()
         const chunk = await this.getChunk(partNumber)
 
         const { raw_response: response, error } = await request(url, {
             method,
             credentials: "same-origin",
             headers: { "Content-Type": "application/octet-stream" },
-            body: chunk.value,
+            body: chunk,
             signal: this.abortController.signal
         })
 
@@ -272,7 +281,7 @@ export default class Uploader {
             await request(log_url, { method: "POST", headers: { ...authHeaders }, signal: this.abortController.signal })
         }
         this.FILE_UPLOAD_STATUS = UPLOAD_STARTED
-        const chunkSize = chunk.value.size
+        const chunkSize = chunk.length
         this.bytesUploaded += chunkSize
         this.opts.onProgress(this.bytesUploaded, this.metadata.size)
         return Promise.resolve(true)
@@ -285,7 +294,7 @@ export default class Uploader {
      * Call the callback functions if provided any
      * Update progress by bytes sent and received successfully
      */
-    async process_chunks() {
+    async processChunks() {
         const part_numbers = Object.keys(this.UPLOAD_PART_NUMBER_MAP).map((v) => parseInt(v))
         const lastPartNumber = Math.max(...part_numbers)
         part_numbers.indexOf(lastPartNumber)
@@ -324,18 +333,18 @@ export default class Uploader {
         try {
             await this.initUpload()
             if (this.FILE_UPLOAD_STATUS === UPLOAD_COMPLETED) {
-                this.opts.onProgress(this.metadata.size, this.metadata.size)
+                this.opts.onProgress?.(this.metadata.size, this.metadata.size)
                 const file = await getFile({ auth: this.auth, fileURL: this.LOCATION })
-                this.opts.onSuccess(file)
+                this.opts.onSuccess?.(file)
                 return Promise.resolve(`UPLOADED FROM CACHE ${this.metadata.name}`)
             }
-            await this.process_chunks()
+            await this.processChunks()
             return Promise.resolve(`UPLOADED ${this.metadata.name}`)
         } catch (e: unknown) {
             if (e instanceof AbortControllerPassiveError) {
                 return
             }
-            this.opts.onError(this.metadata, e as Error)
+            this.opts.onError?.(this.metadata, e as Error)
             return Promise.reject(`Failed file ${this.metadata.name} with logged reason`)
         }
     }

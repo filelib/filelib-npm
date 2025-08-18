@@ -17,6 +17,20 @@ export default [
     {
         ignores: ["**/dist/", "**/dist/*", "./eslint.config.mjs"]
     },
+    {
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "module",
+            globals: {
+                console: "readonly",
+                setTimeout: "readonly",
+                TextDecoder: "readonly",
+                process: "readonly",
+                Buffer: "readonly",
+                global: "readonly"
+            }
+        }
+    },
     ...compat.extends(
         "eslint:recommended",
         "plugin:@typescript-eslint/recommended",
@@ -76,6 +90,12 @@ export default [
 
             "react/no-unescaped-entities": 0,
             "react-hooks/exhaustive-deps": 0
+        }
+    },
+    {
+        files: ["**/tests/**/*.ts", "**/tests/**/*.tsx"],
+        rules: {
+            "sort-imports": "off"
         }
     }
 ]

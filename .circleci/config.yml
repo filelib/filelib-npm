@@ -1,0 +1,47 @@
+version: 2.1
+
+orbs:
+    node: circleci/node@4.7.0
+
+executors:
+    node-executor:
+        docker:
+            - image: cimg/node:21.5
+        working_directory: ~/project/
+
+jobs:
+    unit-test-client:
+        executor: node-executor
+        steps:
+            - checkout
+            - run:
+                  name: Install Client dependencies
+                  command: |
+                      cd packages/client
+                      npm install --prefix .
+                      npm run pack
+                      VERSION=$(node -p "require('./package.json').version")
+                      echo "Getting Version = ${VERSION}"
+                      npm install ./packs/filelib-client-${VERSION}.tgz
+            - run:
+                  name: Run Lint the code
+                  command: |
+                      cd packages/client
+                      npm run lint
+            - run:
+                  name: Run Client tests
+                  command: |
+                      cd packages/client
+                      npm run test
+
+workflows:
+    version: 2
+
+    unit-test:
+        jobs:
+            - unit-test-client:
+                  filters:
+                      branches:
+                          only:
+                              - main
+                              - feat/hulu

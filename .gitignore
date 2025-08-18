@@ -13,7 +13,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-
+.env
 dist-ssr
 *.local
 
@@ -30,3 +30,4 @@ dist-ssr
 *.tz
 
 
+filelib-storage.json
