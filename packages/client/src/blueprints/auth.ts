@@ -2,13 +2,12 @@ import { AuthOptions } from "../types"
 import { AUTHORIZATION_HEADER } from "../constants"
 
 export default abstract class Auth {
-    protected auth_key!: AuthOptions["auth_key"]
+    protected authKey!: AuthOptions["authKey"]
     protected access_token!: string
     protected expiration!: Date
 
-    constructor() {
-        console.log("ABSTRACT AUTH INITED.")
-    }
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    constructor() {}
 
     abstract acquire_access_token(): Promise<string>
 

@@ -1,49 +1,58 @@
 {
-  "name": "@filelib/client",
-  "version": "0.0.1",
-  "description": "Filelib.com API Client.",
-  "type": "module",
-  "main": "./dist/index.js",
-  "files": [
-    "./dist/*",
-    "README.md"
-  ],
-
-  "exports": {
-    ".": "./dist/index.js",
-    "./node": "./dist/node/index.js",
-    "./browser": "./dist/browser/index.js"
-  },
-  "dependencies": {
-    "@justinmusti/storage": "^0.0.1",
-    "@justinmusti/utils": "^0.0.7",
-    "i": "^0.3.7",
-    "ini": "^5.0.0",
-    "jose": "^5.9.2",
-    "tus-js-client": "^4.2.3",
-    "uuid": "^10.0.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.10.0",
-    "@types/eslint__js": "^8.42.3",
-    "@types/ini": "^4.1.1",
-    "@types/node": "^22.5.2",
-    "@types/uuid": "^10.0.0",
-    "eslint": "^9.10.0",
-    "prettier": "3.3.3",
-    "typescript": "^5.5.4",
-    "typescript-eslint": "^8.4.0"
-  },
-  "scripts": {
-    "build": "rm -rf ./dist && tsc -p ./tsconfig.json  --skipLibCheck",
-    "lint": "eslint .",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [
-    "Filelib.com",
-    "API",
-    "Client"
-  ],
-  "author": "Filelib",
-  "license": "MIT"
+    "name": "@filelib/client",
+    "version": "0.0.1",
+    "description": "Filelib.com API Client.",
+    "type": "module",
+    "main": "./dist/index.js",
+    "files": [
+        "./dist/*",
+        "README.md"
+    ],
+    "types": "./dist/types.d.ts",
+    "typings": "./dist/types.d.ts",
+    "exports": {
+        ".": "./dist/index.js",
+        "./node": "./dist/node/index.js",
+        "./browser": "./dist/browser/index.js",
+        "./types": "./dist/types.d.ts"
+    },
+    "scripts": {
+        "build": "rm -rf ./dist && copyfiles -u 1 \"src/**/*.d.ts\" dist &&  tsc -p ./tsconfig-build.json  --skipLibCheck ",
+        "pack": "npm run build || true && mkdir -p packs && rm -rf ./packs/* && npm pack --pack-destination=./packs",
+        "lint": "eslint .",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "dependencies": {
+        "i": "^0.3.7",
+        "ini": "^5.0.0",
+        "jose": "^5.9.2",
+        "uuid": "^10.0.0"
+    },
+    "peerDependencies": {
+        "@justinmusti/storage": "^0.0.9",
+        "@justinmusti/utils": "^0.0.8",
+        "tus-js-client": "^4.2.3"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.10.0",
+        "@types/bun": "^1.1.11",
+        "@types/eslint__js": "^8.42.3",
+        "@types/ini": "^4.1.1",
+        "@types/node": "^22.7.4",
+        "@types/uuid": "^10.0.0",
+        "bun": "^1.1.31",
+        "bun-types": "^1.1.31",
+        "copyfiles": "^2.4.1",
+        "eslint": "^9.10.0",
+        "prettier": "3.3.3",
+        "typescript": "^5.5.4",
+        "typescript-eslint": "^8.4.0"
+    },
+    "keywords": [
+        "Filelib.com",
+        "API",
+        "Client"
+    ],
+    "author": "Filelib",
+    "license": "MIT"
 }

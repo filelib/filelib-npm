@@ -33,24 +33,24 @@ export default class Auth extends BaseAuth {
     /**
      * Initialize an Auth instance that will handle authentication with Filelib API.
      * @param source {string} - Indicate where the Filelib credentials are located.
-     * @param auth_key {string} - Pass credential key directly.
+     * @param authKey {string} - Pass credential key directly.
      * @param auth_secret {string} - Pass Credential secret directly.
      * @param source_file {string} - Path to the file where credentials are located.
      */
     constructor({
         source = "file",
-        auth_key,
+        authKey,
         auth_secret,
         source_file = "~/.filelib/credentials"
     }: AuthOptions & { source: string }) {
         super()
         this.source = source
-        this.auth_key = auth_key
+        this.authKey = authKey
         this.auth_secret = auth_secret
         this.source_file = source_file
 
-        if (!!auth_key && !!auth_secret) {
-            this.auth_key = auth_key
+        if (!!authKey && !!auth_secret) {
+            this.authKey = authKey
             this.auth_secret = auth_secret
         } else {
             this.#parse_credentials()
@@ -58,7 +58,7 @@ export default class Auth extends BaseAuth {
     }
 
     #parse_credentials() {
-        if (!this.auth_secret || !this.auth_key) {
+        if (!this.auth_secret || !this.authKey) {
             if (!CREDENTIAL_SOURCE_OPTIONS.includes(this.source)) {
                 throw new AuthSourceError(
                     `Unsupported authentication source option. Must be one of: ${CREDENTIAL_SOURCE_OPTIONS.join(", ")}`
@@ -95,9 +95,9 @@ export default class Auth extends BaseAuth {
         // console.log("CREDENTIALS INI", creds)
         const { api_key, api_secret } = creds.filelib
         // console.log("FILE ACWORED CREDS", api_key, api_secret)
-        this.auth_key = api_key
+        this.authKey = api_key
         this.auth_secret = api_secret
-        // console.log("PASSED ASSSIUGNMENT", this.auth_key, this.auth_secret)
+        // console.log("PASSED ASSSIUGNMENT", this.authKey, this.auth_secret)
     }
 
     /**
@@ -110,14 +110,14 @@ export default class Auth extends BaseAuth {
         if (!(`${ENV_API_SECRET_IDENTIFIER}` in process.env)) {
             throw new AuthEnvVariableMissingError(`${ENV_API_SECRET_IDENTIFIER} must be present in env`)
         }
-        this.auth_key = process.env[ENV_API_KEY_IDENTIFIER]
+        this.authKey = process.env[ENV_API_KEY_IDENTIFIER]
         this.auth_secret = process.env[ENV_API_SECRET_IDENTIFIER]
     }
 
     async #getJWTToken(): Promise<string> {
-        // console.log("SINGING TOKEN WITH CREDS", this.auth_key, this.auth_secret)
+        // console.log("SINGING TOKEN WITH CREDS", this.authKey, this.auth_secret)
         const payload = {
-            api_key: this.auth_key,
+            api_key: this.authKey,
             nonce: randomUUID(),
             request_client_source: "js_filelib"
         }
@@ -133,7 +133,7 @@ export default class Auth extends BaseAuth {
 
     public async acquire_access_token(): Promise<string> {
         // console.log("ACQUIRING ACCESS TOKEN")
-        if (!this.auth_key || !this.auth_secret) {
+        if (!this.authKey || !this.auth_secret) {
             this.#parse_credentials()
         }
         const token = await this.#getJWTToken()

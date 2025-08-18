@@ -1,5 +1,4 @@
-// export const FILELIB_API_BASE_URL: string = "http://172.24.0.6:8000"
-export const FILELIB_API_BASE_URL: string = "https://cruel-toes-wave.loca.lt"
+export const FILELIB_API_BASE_URL: string = "https://api.filelib.com"
 export const FILELIB_API_AUTH_URL: string = `${FILELIB_API_BASE_URL}/auth/`
 export const FILELIB_API_AUTH_BROWSER_URL: string = `${FILELIB_API_BASE_URL}/auth/browser/`
 export const FILELIB_API_UPLOAD_URL: string = `${FILELIB_API_BASE_URL}/upload/`

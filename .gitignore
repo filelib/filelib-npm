@@ -1,6 +1,8 @@
 .idea
 dist
 node_modules
+packs
+package-lock.json
 
 # Logs
 logs

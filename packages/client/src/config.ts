@@ -7,47 +7,18 @@ const configAccessOptions: string[] = ["private"]
 /**
  * Create configuration for each file that is being uploaded.
  *
- * A lot can happen during an upload, so this is quite hard to follow!
- * - @param: storage: this is the target storage option created in Filelib Dashboard.
- *   This is where the file will be uploaded to.
- * - While the upload is in progress, it may be paused or cancelled.
- *   Pausing aborts the underlying tus.Upload, and removes the upload from the `this.requests` queue. All other state is
- *   maintained.
- *   Cancelling removes the upload from the `this.requests` queue, and completely aborts the upload-- the `tus.Upload`
- *   instance is aborted and discarded, the EventManager instance is destroyed (removing all listeners).
- *   Resuming the upload uses the `this.requests` queue as well, to prevent selectively pausing and resuming uploads from
- *   bypassing the limit.
- * - After completing an upload, the tus.Upload and EventManager instances are cleaned up, and the upload is marked as done
- *   in the `this.requests` queue.
- * - When an upload completed with an error, the same happens as on successful completion, but the `upload()` promise is
- *   rejected.
- *
  * Create configuration for each file that is being uploaded.
  * - storage: this is the target storage option created in Filelib Dashboard.
  *    This is where the file will be uploaded to.
  * */
+
 export default class Config {
     storage: string
-    prefix: string
-    access: string
+    prefix: string = ""
+    access: string = "private"
 
     /**
      * Create configuration for each file that is being uploaded.
-     *
-     * A lot can happen during an upload, so this is quite hard to follow!
-     * - @param: storage: this is the target storage option created in Filelib Dashboard.
-     *   This is where the file will be uploaded to.
-     * - While the upload is in progress, it may be paused or cancelled.
-     *   Pausing aborts the underlying tus.Upload, and removes the upload from the `this.requests` queue. All other state is
-     *   maintained.
-     *   Cancelling removes the upload from the `this.requests` queue, and completely aborts the upload-- the `tus.Upload`
-     *   instance is aborted and discarded, the EventManager instance is destroyed (removing all listeners).
-     *   Resuming the upload uses the `this.requests` queue as well, to prevent selectively pausing and resuming uploads from
-     *   bypassing the limit.
-     * - After completing an upload, the tus.Upload and EventManager instances are cleaned up, and the upload is marked as done
-     *   in the `this.requests` queue.
-     * - When an upload completed with an error, the same happens as on successful completion, but the `upload()` promise is
-     *   rejected.
      *
      * Create configuration for each file that is being uploaded.
      * - storage: this is the target storage option created in Filelib Dashboard.

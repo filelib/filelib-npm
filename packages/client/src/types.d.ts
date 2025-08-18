@@ -1,4 +1,5 @@
 import Auth from "./blueprints/auth"
+import { BaseError } from "./exceptions"
 import Config from "./config"
 import { CREDENTIAL_SOURCE_OPTIONS } from "./constants"
 import { FileSource } from "tus-js-client"
@@ -6,22 +7,39 @@ import { Storage } from "@justinmusti/storage"
 
 export interface AuthOptions {
     source: (typeof CREDENTIAL_SOURCE_OPTIONS)[number]
-    auth_key?: string
+    authKey?: string
     auth_secret?: string
     source_file?: string
 }
 
-export interface FilelibClientOpts extends Partial<AuthOptions> {
+export interface FilelibClientOptionsEventHandlers {
+    onProgress?: ((bytesSent: number, bytesTotal: number) => void) | null
+    onChunkComplete?: ((chunkSize: number, bytesAccepted: number, bytesTotal: number) => void) | null
+    onSuccess?: ((file: FilelibFile) => void) | null
+    onError?: ((error: InstanceType<BaseError | Error>) => void) | null
+    onRetry?: ((error: Error, retryAttempt: number) => boolean) | null
+}
+
+export interface FilelibClientOpts extends Partial<AuthOptions>, FilelibClientOptionsEventHandlers {
     auth?: Auth
     source?: AuthOptions["source"]
     config?: Config
     parallelUploads?: number
+    headers?: { [key: string]: string }
+
+    authKey?: string // Filelib credentials Auth/API key
+    metadata?: MetaData
+
+    limit?: number
+    useCache?: boolean
+    abortOnFail?: boolean
+    clearCache?: boolean
 }
 
 interface ConfigOpts {
     storage: string
-    prefix: string
-    access: string
+    prefix?: string
+    access?: string
 }
 
 export type FileLike = string | File
@@ -57,15 +75,21 @@ export interface FilelibFile {
 }
 
 export interface UploaderOpts {
-    // file: string | (File | MetaData)
+    id: string
     file: Promise<FileSource>
     config: Config
     auth: Auth
     metadata: MetaData
     workers?: number
-    onProgress?: (bytesUploaded: number, bytesTotal: number) => void
-    onSuccess?: (file: FilelibFile) => void
     storage: Storage
+    // Callbacks
+    onSuccess?: (file: FilelibFile) => void
+    onProgress?: (bytesUploaded: number, bytesTotal: number) => void
+    onError?: ((fileMetadata: MetaData, error: InstanceType<BaseError | Error>) => void) | null
+    // Caching options
+    useCache?: boolean // defaults to true.
+    clearCacheOnSuccess?: boolean // defaults to false
+    clearCacheOnError?: boolean // defaults to false
 }
 
 export interface MetaData {

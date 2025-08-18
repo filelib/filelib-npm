@@ -31,11 +31,7 @@
     "sourceRoot": "./src/",
     "sourceMap": true,
     "outDir": "./dist/",
-//    "paths": {
-//      "@/*": [
-//        "packages/*/src/**/*"
-//      ]
-//    },
+
     "typeRoots": [
       "node_modules/@types",
       "node_modules/@types/node"
@@ -44,6 +40,9 @@
   "references": [
     {
       "path": "packages/client/src"
+    },
+    {
+      "path": "packages/client/tests"
     },
     {
       "path": "packages/uppy/src"
