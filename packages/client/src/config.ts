@@ -28,40 +28,48 @@ export default class Config {
         this.storage = storage
         this.prefix = prefix
         this.access = access
-        this.validate_config()
+        this.validateConfig()
     }
 
-    validate_config() {
-        this.#validate_storage()
-        this.#validate_prefix()
-        this.#validate_access()
+    validateConfig() {
+        this.#validateStorage()
+        this.#validatePrefix()
+        this.#validateAccess()
     }
-    #validate_storage() {
+
+    #validateStorage() {
         if (!this.storage) throw new ConfigValidationError("storage option must be provided.")
     }
 
-    #validate_prefix() {
+    #validatePrefix() {
         if (!this.prefix) return true
         if (typeof this.prefix !== "string") throw new ConfigValidationError("prefix option must be a string.")
-        const acceptedChars = ["-", "_", "/", ...Array(10).keys()]
-        for (let i = 32; i <= 127; i++) {
-            acceptedChars.push(String.fromCharCode(i))
-        }
 
-        this.prefix.split("").forEach((c) => {
-            if (!acceptedChars.includes(c)) {
-                throw new ConfigValidationError("Unsupported character in prefix: " + c)
+        // Define accepted characters more explicitly
+        const acceptedChars = new Set([
+            "-",
+            "_",
+            "/",
+            ".",
+            ...Array.from({ length: 10 }, (_, i) => i.toString()),
+            ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(97 + i)), // a-z
+            ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)) // A-Z
+        ])
+
+        for (const char of this.prefix) {
+            if (!acceptedChars.has(char)) {
+                throw new ConfigValidationError(`Unsupported character in prefix: ${char}`)
             }
-        })
+        }
         return true
     }
-    #validate_access() {
+    #validateAccess() {
         if (!this.access) throw new ConfigValidationError("access option must be provided.")
         if (!configAccessOptions.includes(this.access))
             throw new ConfigValidationError("Unsupported access configuration value: " + this.access)
     }
 
-    to_headers() {
+    toHeaders() {
         return {
             [CONFIG_STORAGE_HEADER]: this.storage,
             [CONFIG_PREFIX_HEADER]: this.prefix,

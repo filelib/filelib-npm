@@ -41,7 +41,7 @@ export default abstract class BaseClient {
         }
     }
 
-    validateAddFile({ id, config }: Pick<UploaderOpts, "id" | "config">) {
+    validateAddFile({ id, config }: Pick<UploaderOpts, "id"> & { config?: Config | string }) {
         // Ensure config exits.
         if (!config && !this.config) {
             throw new FileConfigRequiredError("Config must be provided for file.")
@@ -77,7 +77,7 @@ export default abstract class BaseClient {
     upload() {
         this.canUpload({ raise_exp: true })
         this.auth
-            .get_access_token()
+            .getAccessToken()
             .then(() => {
                 const groupedUploads = groupArray<Uploader>(this.files, this.opts.parallelUploads)
 

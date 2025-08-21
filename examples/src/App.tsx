@@ -19,9 +19,9 @@ const uppy = new Uppy({ id: "UppyDashboard" }).use(StatusBar, { hidePauseResumeB
         // eslint-disable-next-line no-console
         console.log("Upload Success: Filelib File:", file)
     },
-    onError: (metadata, e) => {
+    onError: (e) => {
         // eslint-disable-next-line no-console
-        console.log("Upload Success: Filelib File:", metadata, e)
+        console.log("Upload Error: Filelib File:", e)
     },
     useCache: true,
     abortOnFail: false,

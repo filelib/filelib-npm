@@ -3,40 +3,32 @@ import { AUTHORIZATION_HEADER } from "../constants"
 
 export default abstract class Auth {
     protected authKey!: AuthOptions["authKey"]
-    protected access_token!: string
+    protected accessToken!: string
     protected expiration!: Date
 
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     constructor() {}
 
-    abstract acquire_access_token(): Promise<string>
+    abstract acquireAccessToken(): Promise<string>
 
-    // abstract is_access_token(): boolean
-    //
-    // abstract is_expired(): boolean
-    //
-    // abstract get_access_token(): Promise<string>
-    //
-    // abstract to_headers(): Promise<Record<string, string>>
-
-    is_access_token(): boolean {
-        return !!this.access_token
+    isAccessToken(): boolean {
+        return !!this.accessToken
     }
 
-    is_expired(): boolean {
-        return this.is_access_token() && this.expiration && this.expiration < new Date()
+    isExpired(): boolean {
+        return this.isAccessToken() && this.expiration && this.expiration < new Date()
     }
 
-    async get_access_token(): Promise<string> {
-        if (!this.access_token || this.is_expired()) {
-            await this.acquire_access_token()
+    async getAccessToken(): Promise<string> {
+        if (!this.accessToken || this.isExpired()) {
+            await this.acquireAccessToken()
         }
-        return this.access_token
+        return this.accessToken
     }
 
-    async to_headers() {
+    async toHeaders() {
         return {
-            [AUTHORIZATION_HEADER]: `Bearer ${await this.get_access_token()}`
+            [AUTHORIZATION_HEADER]: `Bearer ${await this.getAccessToken()}`
         }
     }
 }

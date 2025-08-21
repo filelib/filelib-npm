@@ -1,0 +1,44 @@
+name: unit-test
+
+on:
+  push:
+    branches: [ main, dev, initial-setup, feat/hulu, feat/hulu-node ]
+
+jobs:
+  unit-test-client:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Use Node.js 21.5
+      uses: actions/setup-node@v4
+      with:
+        node-version: '21.5'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+        
+    - name: Set Environment Variables
+      run: |
+        echo "FILELIB_API_KEY=$(uuidgen)" >> $GITHUB_ENV
+        echo "FILELIB_API_SECRET=$(uuidgen)" >> $GITHUB_ENV
+    - name: Install Parent Dependencies
+      working-directory: .
+      run: |
+        npm install --workspaces=false --prefix .
+    - name: Install Client dependencies
+      working-directory: packages/client
+      run: |
+        npm install --prefix .
+        npm run pack --prefix .
+        VERSION=$(node -p "require('./package.json').version")
+        echo "Getting Version = ${VERSION}"
+        npm install ./packs/filelib-client-${VERSION}.tgz
+    
+    - name: Run Lint the code
+      working-directory: packages/client
+      run: npm run lint
+    
+    - name: Run Client tests
+      working-directory: packages/client
+      run: npm run test

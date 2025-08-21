@@ -15,7 +15,7 @@ export function getFile({
     fileID?: string
     fileURL?: string
 }): Promise<FilelibFile> {
-    return auth.to_headers().then((authHeaders) => {
+    return auth.toHeaders().then((authHeaders) => {
         const destination = fileURL ?? `${FILELIB_API_UPLOAD_URL}/${fileID}/`
         return request<FilelibFile>(destination, {
             headers: new Headers(authHeaders)

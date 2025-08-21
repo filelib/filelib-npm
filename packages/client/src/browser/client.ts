@@ -2,12 +2,13 @@
  * Client Object that communicates with Filelib API.
  *
  * */
-import { AuthOptions, FilelibClientOpts, UploaderOpts } from "../types"
 
+import { ClientAuthRequiredError, ClientConfigRequiredError } from "../exceptions"
+import { FilelibClientOpts, UploaderOpts } from "../types"
 import Auth from "./auth"
 import BaseClient from "../blueprints/client"
 import Config from "../config"
-import { default as FileReader } from "tus-js-client/lib/browser/fileReader"
+import FileReader from "./file_reader"
 import Storage from "@justinmusti/storage/browser"
 import Uploader from "../uploader"
 
@@ -25,25 +26,64 @@ export default class Client extends BaseClient {
     files!: Uploader[]
     opts: Partial<FilelibClientOpts>
 
-    constructor({ source, auth, config, authKey, source_file, ...opts }: FilelibClientOpts & { auth?: Auth }) {
+    constructor({
+        auth,
+        config,
+        authKey,
+        ...opts
+    }: Omit<FilelibClientOpts, "config"> & { auth?: Auth; config?: Config | string }) {
         super()
-        this.auth = auth ?? new Auth({ source, authKey, source_file } as AuthOptions)
+
+        // Validate that either auth instance or authKey/authSecret are provided
+        if (!auth && !authKey) {
+            throw new ClientAuthRequiredError(
+                "Authentication credentials are required. Provide either auth instance, authKey/authSecret, or authOptions"
+            )
+        }
+        this.auth = auth && auth instanceof Auth ? auth : new Auth({ authKey })
+
+        // Handle config - can be Config instance or string
+        if (config) {
+            if (typeof config === "string") {
+                this.config = new Config({ storage: config })
+            } else {
+                this.config = config
+            }
+        }
+
         this.files = []
-        this.config = config
         this.opts = { ...defaultOpts, ...opts }
     }
 
-    addFile({ id, file, config, metadata, ...rest }: Omit<UploaderOpts, "auth" | "file" | "storage"> & { file: File }) {
+    addFile({
+        id,
+        file,
+        config,
+        metadata,
+        ...rest
+    }: Omit<UploaderOpts, "auth" | "file" | "storage" | "config"> & { file: File; config?: Config | string }) {
         const uploaderOpts = { ...this.opts, ...rest }
+
         try {
             this.validateAddFile({ id, config })
 
-            const _file = new FileReader().openFile(file, metadata.size)
+            // Handle config - can be Config instance or string
+            if (!config && !this.config)
+                throw new ClientConfigRequiredError(
+                    "Config is required. Provide either a config parameter or set config in the client constructor."
+                )
+
+            if (config) {
+                config = typeof config === "string" ? new Config({ storage: config }) : config
+            } else {
+                config = this.config as Config
+            }
+
             this.files.push(
                 new Uploader({
                     id,
-                    file: _file,
-                    config: config ?? this.config!,
+                    file: new FileReader({ file, ...(metadata ?? {}) }),
+                    config: config,
                     auth: this.auth,
                     metadata,
                     storage: new Storage({ prefix: "filelib" }),
@@ -51,7 +91,7 @@ export default class Client extends BaseClient {
                 })
             )
         } catch (e) {
-            uploaderOpts?.onError(metadata, e)
+            uploaderOpts?.onError?.(metadata, e as Error)
         }
     }
 }

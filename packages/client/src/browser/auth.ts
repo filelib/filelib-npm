@@ -1,11 +1,11 @@
 /**
  * Authenticate with FileLib API
  * */
-import { AuthMissingCredentialError, FilelibAPIResponseError } from "../exceptions"
+import { AuthInvalidCredentialFormatError, AuthMissingCredentialError, FilelibAPIResponseError } from "../exceptions"
 import { FILELIB_API_AUTH_BROWSER_URL, FILELIB_API_AUTH_URL } from "../constants"
+import { validate as isValidUUID, v4 as randomUUID } from "uuid"
 import { AuthOptions } from "../types"
 import { default as BaseAuth } from "../blueprints/auth"
-import { v4 as randomUUID } from "uuid"
 
 export default class Auth extends BaseAuth {
     /**
@@ -19,7 +19,14 @@ export default class Auth extends BaseAuth {
         if (!authKey) {
             throw new AuthMissingCredentialError("Auth Key(authKey) must be provided.")
         }
+        this.#validateCredentials({ authKey })
         this.authKey = authKey
+    }
+
+    #validateCredentials({ authKey }: Pick<AuthOptions, "authKey">): void {
+        if (!isValidUUID(authKey)) {
+            throw new AuthInvalidCredentialFormatError("authKey is not a valid UUID")
+        }
     }
 
     /**
@@ -95,7 +102,6 @@ export default class Auth extends BaseAuth {
         return new Promise((resolve) => {
             IframeEl.onload = () => {
                 window.addEventListener("message", function (event) {
-                    // console.log("Message received from the child:", event.origin, event.data)
                     resolve(event.data as string) // Message received from child
                 })
                 submitForm.submit()
@@ -106,7 +112,7 @@ export default class Auth extends BaseAuth {
         })
     }
 
-    public async acquire_access_token(): Promise<string> {
+    public async acquireAccessToken(): Promise<string> {
         const nonce = await this.createIFrame()
         const headers = {
             Authorization: `Basic ${this.authKey}`,
@@ -121,7 +127,7 @@ export default class Auth extends BaseAuth {
         })
         const { status, data, error } = await response.json()
         if (!status) throw new FilelibAPIResponseError(error)
-        this.access_token = data.access_token!
+        this.accessToken = data.access_token!
         this.expiration = new Date(data.expiration)
         return data.access_token as string
     }
