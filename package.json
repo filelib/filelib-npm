@@ -1,0 +1,40 @@
+{
+  "name": "filelib-js",
+  "version": "0.0.1",
+  "description": "Filelib.com npm packages monorepo.",
+  "files": [
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --skipLibCheck",
+    "lint": "eslint .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/filelib/filelib-npm.git"
+  },
+  "keywords": [
+    "Filelib",
+    "Resumeble",
+    "File",
+    "Uploader",
+    "Converter"
+  ],
+  "author": "justinmusti",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/filelib/filelib-npm/issues"
+  },
+  "homepage": "https://github.com/filelib/filelib-npm#readme",
+  "workspaces": [
+    "packages/client",
+    "packages/uppy"
+  ],
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.5.0",
+    "@typescript-eslint/parser": "^8.5.0",
+    "@types/eslint__eslintrc": "^2.1.2"
+  }
+}

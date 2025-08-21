@@ -1,0 +1,164 @@
+import { BasePlugin, Body, Meta, Uppy } from "@uppy/core"
+import { FilelibFile, UploaderOpts } from "@filelib/client/types"
+import { filterFilesToEmitUploadStarted, filterNonFailedFiles } from "@uppy/utils/lib/fileFilters"
+import Client from "@filelib/client/browser"
+import { DefinePluginOpts } from "@uppy/core/lib/BasePlugin"
+import { FilelibUppyOpts } from "./types"
+import { UploadError } from "@filelib/client/browser"
+import { UppyFile } from "@uppy/utils/lib/UppyFile"
+
+// This is only the optional values.
+const defaultOptions = {
+    limit: 20,
+    parallelUploads: 5,
+    onError: () => void 0
+} satisfies Partial<FilelibUppyOpts>
+
+type Opts = DefinePluginOpts<FilelibUppyOpts, keyof typeof defaultOptions>
+
+export default class FilelibUppy<M extends Meta, B extends Body> extends BasePlugin<Opts, M, B> {
+    id: string = "Filelib"
+    client: Client
+
+    constructor(uppy: Uppy<M, B>, opts: FilelibUppyOpts) {
+        super(uppy, { ...defaultOptions, ...opts })
+        this.type = "uploader"
+
+        this.id = this.opts.id || "Filelib"
+        const onError = (err: UploadError) => {
+            this.uppy.emit("error", err)
+            this.opts?.onError(err)
+        }
+
+        this.client = new Client({ authKey: opts.authKey, onError })
+
+        this.uppy.on("file-removed", (file) => {
+            this.client.removeFile({ id: file.id })
+        })
+
+        // Remove all queued files.
+        this.uppy.on("cancel-all", () => {
+            for (const fbFile of this.client.files) {
+                fbFile.abort("Terminated: All uploads cancelled by user.")
+            }
+            this.client.files = []
+        })
+
+        this.uppy.on("upload-pause", (file, isPaused) => {
+            const filelibFile = this.client.files.filter((f) => f.id === file.id)?.[0]
+            if (isPaused) {
+                filelibFile.abort("Paused: upload paused by user.")
+            } else {
+                filelibFile.unabort()
+                void filelibFile.upload()
+            }
+            this.uppy.setFileState(file.id, { isPaused })
+        })
+
+        this.uppy.on("pause-all", () => {
+            for (const f of this.client.files) {
+                f.abort()
+            }
+        })
+
+        this.uppy.on("file-added", (file) => {
+            this.addFile(file)
+        })
+
+        this.uppy.on("upload-retry", (file) => {
+            const ff = this.client.files.filter((f) => f.id === file.id)?.[0]
+            ff?.unabort()
+            ff?.upload()
+        })
+
+        this.uppy.on("retry-all", () => {
+            for (const f of this.client.files) {
+                f.unabort()
+                f.upload()
+            }
+        })
+    }
+
+    private addFile(file: UppyFile<M, B>) {
+        const onProgress = (bytesUploaded: number) => {
+            this.uppy.emit("upload-progress", file, {
+                // uploadStarted: f.progress.uploadStarted ?? 0,
+                uploadStarted: 1,
+                bytesUploaded,
+                bytesTotal: file.size
+            })
+        }
+
+        const onSuccess = (filelibFile: FilelibFile & { uploadURL: string }) => {
+            const uploadResp = {
+                uploadURL: filelibFile.uploadURL,
+                status: 200,
+                body: {} as B
+            }
+            this.uppy.emit("upload-success", file, uploadResp)
+
+            this.opts?.onSuccess(filelibFile)
+        }
+
+        const onError: UploaderOpts["onError"] = (fileMeta, err: UploadError) => {
+            this.uppy.emit("upload-error", file, err)
+            this.opts?.onError(err)
+        }
+
+        this.client.addFile({
+            id: file.id,
+            file: file.data as File,
+            config: this.opts.config,
+            useCache: this.client.opts.useCache,
+            metadata: { name: file.name, size: file.size, type: file.type },
+            onProgress,
+            onSuccess,
+            onError
+        })
+    }
+
+    // TODO: This will be updated when remote-file upload implemented.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    uploadFiles = async (files: UppyFile<M, B>[]): Promise<void> => {
+        if (!this.client.files || this.client.files.length < 1) {
+            this.uppy.emit("error", new Error("No Files to upload in Filelib Client."))
+            return
+        }
+
+        this.client.upload()
+    }
+
+    #handleUpload = async (fileIDs: string[]) => {
+        this.uppy.log("INITIATING UPLOAD")
+        if (fileIDs.length === 0) {
+            this.uppy.log("No files to upload")
+            return
+        }
+
+        this.uppy.log("[Filelib] Uploading...")
+        const currentState = this.uppy.getState()
+        // Without setting capabilities.resumableUploads to true, UI does not present resume/pause button
+        this.uppy.setState({
+            capabilities: {
+                ...currentState.capabilities,
+                uploadProgress: true,
+                individualCancellation: true,
+                resumableUploads: true
+            }
+        })
+        const filesToUpload = this.uppy.getFilesByIds(fileIDs)
+        const filesFiltered = filterNonFailedFiles(filesToUpload)
+        const filesToEmit = filterFilesToEmitUploadStarted(filesFiltered)
+        this.uppy.emit("upload-start", filesToEmit)
+
+        await this.uploadFiles(filesToEmit)
+    }
+
+    install(): void {
+        this.uppy.addUploader(this.#handleUpload)
+    }
+
+    uninstall(): void {
+        this.uppy.removeUploader(this.#handleUpload)
+    }
+}
