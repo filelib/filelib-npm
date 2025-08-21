@@ -1,15 +1,17 @@
 import Auth from "./blueprints/auth"
 import { BaseError } from "./exceptions"
 import Config from "./config"
-import { CREDENTIAL_SOURCE_OPTIONS } from "./constants"
-import { FileSource } from "tus-js-client"
+import { CREDENTIAL_SOURCE_TYPES } from "./constants"
+import { FileReader } from "./blueprints/file_reader"
 import { Storage } from "@justinmusti/storage"
 
+export type CredentialSource = (typeof CREDENTIAL_SOURCE_TYPES)[number]
+
 export interface AuthOptions {
-    source: (typeof CREDENTIAL_SOURCE_OPTIONS)[number]
+    source?: CredentialSource
     authKey?: string
-    auth_secret?: string
-    source_file?: string
+    authSecret?: string
+    sourceFile?: string
 }
 
 export interface FilelibClientOptionsEventHandlers {
@@ -20,14 +22,14 @@ export interface FilelibClientOptionsEventHandlers {
     onRetry?: ((error: Error, retryAttempt: number) => boolean) | null
 }
 
-export interface FilelibClientOpts extends Partial<AuthOptions>, FilelibClientOptionsEventHandlers {
+export interface FilelibClientOpts extends FilelibClientOptionsEventHandlers {
     auth?: Auth
-    source?: AuthOptions["source"]
+    authKey?: AuthOptions["authKey"]
+    authSecret?: AuthOptions["authSecret"]
     config?: Config
     parallelUploads?: number
     headers?: { [key: string]: string }
 
-    authKey?: string // Filelib credentials Auth/API key
     metadata?: MetaData
 
     limit?: number
@@ -76,7 +78,7 @@ export interface FilelibFile {
 
 export interface UploaderOpts {
     id: string
-    file: Promise<FileSource>
+    file: FileReader
     config: Config
     auth: Auth
     metadata: MetaData
@@ -106,4 +108,11 @@ export interface UploadUrlMap {
         url: string
         platform: string
     }
+}
+
+export interface CachePayload {
+    hash: number
+    metaData: MetaData
+    uploadURL: string
+    creationTime: string
 }

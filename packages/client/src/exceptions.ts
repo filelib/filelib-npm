@@ -17,9 +17,19 @@ export class AuthSourceError extends BaseError {}
 export class AuthNoAccessTokenPresent extends BaseError {}
 
 /**
+ * Raised when the access token has expired.
+ */
+export class AuthAccessTokenExpiredError extends BaseError {}
+
+/**
  * Raised when an expected credential is missing
  */
 export class AuthMissingCredentialError extends BaseError {}
+
+/**
+ * Raised when provided credentials (authKey/authSecret) are not valid UUIDs.
+ */
+export class AuthInvalidCredentialFormatError extends BaseError {}
 
 /**
  * Authentication ENVIRONMENT VARIABLE is not assigned.
@@ -58,6 +68,16 @@ export class ConfigValidationError extends BaseError {}
  * Raised when processing a file and it does not have a config assigned.
  * */
 export class FileConfigRequiredError extends BaseError {}
+
+/**
+ * Raised when Client is initialized without required config.
+ * */
+export class ClientConfigRequiredError extends BaseError {}
+
+/**
+ * Raised when Client is initialized without required authentication credentials.
+ * */
+export class ClientAuthRequiredError extends BaseError {}
 
 /**
  * Raise when a given file ID is already added before.

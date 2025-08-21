@@ -1,5 +1,5 @@
 {
-    "extends": "../../tsconfig.json",
+    "extends": "./tsconfig.json",
     "compilerOptions": {
         "esModuleInterop": true,
         // Enable latest features
@@ -11,8 +11,7 @@
         "rootDir": "./src",
         "sourceRoot": "./src/",
         "sourceMap": true,
-        "outDir": "./dist/",
-        "typeRoots": ["node_modules/@types", "node_modules/@types/node", "./src/types.d.ts"]
+        "outDir": "./dist/"
     },
     "include": ["./src/**/*", "./src/browser", "./src/node"],
     "exclude": [
@@ -21,6 +20,7 @@
         "./node_modules/*",
         "./dist/",
         "./dist/*",
-        "./eslint.config.mjs"
+        "./eslint.config.mjs",
+        "./tests/*"
     ]
 }

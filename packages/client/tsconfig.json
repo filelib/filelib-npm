@@ -11,8 +11,7 @@
         "rootDir": ".",
         "sourceRoot": "./",
         "sourceMap": true,
-        "outDir": "./dist/",
-        "typeRoots": ["node_modules/@types", "node_modules/@types/node", "node_modules/@types/bun", "./src/types.d.ts"]
+        "outDir": "./dist/"
     },
     "include": ["./tests", "./tests/*", "./tests/**/*", "./src/**/*", "./src/browser", "./src/node"],
     "exclude": [
