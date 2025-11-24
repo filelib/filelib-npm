@@ -98,8 +98,8 @@ export default class Uploader {
         return `filelib/${this.genFileID()}`
     }
 
-    private hasCache() {
-        return this.opts.useCache && this.storage.has(this.getCacheKey())
+    private async hasCache() {
+        return !!this.opts.useCache && (await this.storage.get(this.getCacheKey()))
     }
 
     /**
@@ -123,7 +123,7 @@ export default class Uploader {
             creationTime: new Date().toISOString(),
             ...(overrides ?? {})
         } as CachePayload)
-        this.storage.set(this.getCacheKey(), payload)
+        await this.storage.set(this.getCacheKey(), payload)
     }
 
     /**
@@ -131,10 +131,10 @@ export default class Uploader {
      * @return JSON
      * */
     private async getCache(): Promise<CachePayload> {
-        let cachedPayload = this.storage.get(this.getCacheKey(), {})
+        let cachedPayload = (await this.storage.get(this.getCacheKey())) ?? {}
         if (typeof cachedPayload === "string") cachedPayload = JSON.parse(cachedPayload)
         if (!cachedPayload?.uploadURL) {
-            this.storage.unset(this.getCacheKey())
+            await this.storage.delete(this.getCacheKey())
             return this.initUpload()
         }
         return cachedPayload
@@ -143,7 +143,7 @@ export default class Uploader {
     private async initUploadFromCache() {
         const cachedPayload = await this.getCache()
         if (!cachedPayload?.uploadURL) {
-            this.storage.unset(this.getCacheKey())
+            await this.storage.delete(this.getCacheKey())
             return this.initUpload()
         }
 
@@ -211,7 +211,7 @@ export default class Uploader {
      */
     async initUpload() {
         // Check if file exists in storage.
-        if (this.hasCache()) {
+        if (await this.hasCache()) {
             return this.initUploadFromCache()
         }
         const headers = await this.getInitUploadHeaders()

@@ -2,7 +2,6 @@
  * Client Object that communicates with Filelib API.
  *
  * */
-import * as path from "path"
 import { AuthOptions, FilelibClientOpts, UploaderOpts } from "../types"
 import {
     ClientAuthRequiredError,
@@ -16,7 +15,8 @@ import Config from "../config"
 import { defaultOpts } from "../browser/client"
 import { existsSync } from "fs"
 import { FileReader } from "./file_reader"
-import Storage from "@justinmusti/storage/node"
+import Keyv from "keyv"
+import KeyvSqlite from "@keyv/sqlite"
 import Uploader from "../uploader"
 
 export default class Client extends BaseClient {
@@ -111,6 +111,7 @@ export default class Client extends BaseClient {
                     "Config is required. Provide either a config parameter or set config in the client constructor."
                 )
             }
+            const storage = new Keyv(new KeyvSqlite("sqlite://home/musti/repos/filelib-npm/examples/database.sqlite"))
 
             // Create and add uploader to queue
             this.files.push(
@@ -120,7 +121,7 @@ export default class Client extends BaseClient {
                     file: new FileReader({ file, ...(metadata ?? {}) }),
                     auth: this.auth,
                     metadata,
-                    storage: new Storage({ path: path.resolve(".", "filelib-storage.json"), prefix: "filelib" }),
+                    storage,
                     ...uploaderOpts
                 })
             )

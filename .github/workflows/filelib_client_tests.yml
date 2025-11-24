@@ -1,8 +1,8 @@
 name: unit-test
 
 on:
-  push:
-    branches: [ main, dev, initial-setup, feat/hulu, feat/hulu-node ]
+  pull_request:
+    branches: ["main"]
 
 jobs:
   unit-test-client:
