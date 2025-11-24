@@ -9,7 +9,8 @@ import Auth from "./auth"
 import BaseClient from "../blueprints/client"
 import Config from "../config"
 import FileReader from "./file_reader"
-import Storage from "@justinmusti/storage/browser"
+import Keyv from "keyv"
+import { KeyvLocalStorage } from "keyv-browser"
 import Uploader from "../uploader"
 
 export const defaultOpts: Partial<FilelibClientOpts> = {
@@ -78,6 +79,9 @@ export default class Client extends BaseClient {
             } else {
                 config = this.config as Config
             }
+            const storage = new Keyv({
+                store: new KeyvLocalStorage()
+            })
 
             this.files.push(
                 new Uploader({
@@ -86,7 +90,7 @@ export default class Client extends BaseClient {
                     config: config,
                     auth: this.auth,
                     metadata,
-                    storage: new Storage({ prefix: "filelib" }),
+                    storage,
                     ...uploaderOpts
                 })
             )

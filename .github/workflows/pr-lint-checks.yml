@@ -1,0 +1,16 @@
+name: CI
+on:
+    pull_request:
+        branches: ["main"]
+jobs:
+    Lint_and_Type_Checks:
+        runs-on: ubuntu-latest
+        container: node:24
+        steps:
+            # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+            - uses: actions/checkout@v3
+
+            - name: Install Dependencies
+              run: npm install --include dev
+            - name: Run Lint/Formatting Checks.
+              run: npm run lint

@@ -18,7 +18,7 @@
     },
     "scripts": {
         "build": "npm run build:browser --prefix . && npm run build:node --prefix=.",
-        "build:browser": "rm -rf ./dist && copyfiles -u 1 \"src/**/*.d.ts\" dist &&  tsc -p ./tsconfig-build.json  --skipLibCheck ",
+        "build:browser": "rm -rf ./dist && copyfiles -u 1 \"src/**/*.d.ts\" dist &&  tsc -p ./tsconfig-build.json  --skipLibCheck --sourceMap ",
         "build:node": "bun build src/node --outdir ./dist/  --target node",
         "pack": "npm run build || true && mkdir -p packs && rm -rf ./packs/* && npm pack --pack-destination=./packs",
         "lint": "npm run lint:eslint && npm run lint:prettier  &&  npm run lint:typescript",
@@ -28,9 +28,12 @@
         "test": "bun test"
     },
     "dependencies": {
+        "@keyv/sqlite": "^4.0.6",
         "file-type": "^21.0.0",
         "ini": "^5.0.0",
         "jose": "^5.9.2",
+        "keyv": "^5.5.4",
+        "keyv-browser": "^0.1.1",
         "uuid": "^10.0.0"
     },
     "peerDependencies": {

@@ -3,7 +3,7 @@ import { BaseError } from "./exceptions"
 import Config from "./config"
 import { CREDENTIAL_SOURCE_TYPES } from "./constants"
 import { FileReader } from "./blueprints/file_reader"
-import { Storage } from "@justinmusti/storage"
+import Keyv from "keyv"
 
 export type CredentialSource = (typeof CREDENTIAL_SOURCE_TYPES)[number]
 
@@ -83,7 +83,7 @@ export interface UploaderOpts {
     auth: Auth
     metadata: MetaData
     workers?: number
-    storage: Storage
+    storage: Keyv
     // Callbacks
     onSuccess?: (file: FilelibFile) => void
     onProgress?: (bytesUploaded: number, bytesTotal: number) => void
