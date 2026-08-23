@@ -1,26 +1,24 @@
-import typescriptEslint from "@typescript-eslint/eslint-plugin"
-import tsParser from "@typescript-eslint/parser"
-import path from "node:path"
-import { fileURLToPath } from "node:url"
-import js from "@eslint/js"
-import { FlatCompat } from "@eslint/eslintrc"
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
-})
+import tseslint from "typescript-eslint"
 
 export default [
     {
-        ignores: ["**/dist/", "**/dist/*", "./eslint.config.mjs"]
+        ignores: ["**/dist/", "**/dist/**", "eslint.config.mjs"]
     },
+
+    ...tseslint.configs.recommended,
+    ...tseslint.configs.stylistic,
+
     {
+        files: ["**/*.ts", "**/*.tsx"],
+
         languageOptions: {
-            ecmaVersion: 2022,
+            ecmaVersion: "latest",
             sourceType: "module",
+
+            parserOptions: {
+                projectService: true
+            },
+
             globals: {
                 console: "readonly",
                 setTimeout: "readonly",
@@ -29,29 +27,8 @@ export default [
                 Buffer: "readonly",
                 global: "readonly"
             }
-        }
-    },
-    ...compat.extends(
-        "eslint:recommended",
-        "plugin:@typescript-eslint/recommended",
-        "plugin:@typescript-eslint/stylistic"
-    ),
-    {
-        plugins: {
-            "@typescript-eslint": typescriptEslint
         },
 
-        languageOptions: {
-            parser: tsParser,
-            ecmaVersion: 5,
-            sourceType: "script",
-            parserOptions: {
-                sourceType: "module",
-                tsconfigRootDir: "./",
-                project: ["tsconfig.json"]
-            }
-        },
-        files: ["**/*.ts", "**/*.tsx"],
         rules: {
             "no-console": ["error"],
             "object-curly-spacing": ["error", "always"],
@@ -84,12 +61,10 @@ export default [
                     }
                 }
             ],
+
             "@typescript-eslint/consistent-indexed-object-style": "off",
             "@typescript-eslint/consistent-type-definitions": "off",
-            "@typescript-eslint/no-inferrable-types": "off",
-
-            "react/no-unescaped-entities": 0,
-            "react-hooks/exhaustive-deps": 0
+            "@typescript-eslint/no-inferrable-types": "off"
         }
     }
 ]

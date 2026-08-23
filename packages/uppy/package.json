@@ -28,6 +28,6 @@
         "typescript": "^5.5.4"
     },
     "dependencies": {
-        "@filelib/uppy": "^0.0.4-beta"
+        "@filelib/uppy": "^0.0.5-beta"
     }
 }
