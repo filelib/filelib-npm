@@ -5,6 +5,6 @@ export * from "../constants"
 export * from "../exceptions"
 export * from "./file_reader"
 export * from "../config"
-export * from "../types.d"
+// export * from "../types.d"
 
 export default Client
